@@ -2,3 +2,4 @@
 {"timestamp":"2026-02-04T10:00:10Z","level":"ERROR","service":"DBService","errorCode":"DB_TIMEOUT","message":"Database connection timeout"}
 {"timestamp":"2026-02-04T10:00:20Z","level":"ERROR","service":"DBService","errorCode":"DB_TIMEOUT","message":"Database connection timeout"}
 {"timestamp":"2026-02-04T10:00:25Z","level":"ERROR","service":"PaymentService","errorCode":"PAYMENT_FAILED","message":"Payment processing failed"}
+{"timestamp":"2026-02-04T10:01:25Z","level":"ERROR","service":"PaymentService","errorCode":"PAYMENT_FAILED","message":"Payment processing failed"}
