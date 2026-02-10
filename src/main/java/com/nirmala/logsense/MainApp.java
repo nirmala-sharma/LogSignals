@@ -15,6 +15,9 @@ public class MainApp {
 
 public static void main(String[] args){
     Map<Instant, Integer> errorsPerMinute = new HashMap<>();
+    Aggregator aggregator = new Aggregator();
+    AnomalyDetector detector = new AnomalyDetector(2);
+
 
     try (InputStream is = Main.class
             .getClassLoader()
@@ -29,17 +32,19 @@ public static void main(String[] args){
         String line;
         while ((line = reader.readLine()) != null) {
                try{
-                   // log parsing
+                // log parsing
                 LogModel log = LogParser.parse(line);
 
-                   // log aggregation
-                 Aggregator aggregator = new Aggregator();
+                // log aggregation
                  aggregator.add(log);
 
-               } catch (Exception e) {
+               }
+                catch (Exception e) {
                 System.err.println("Invalid log line: " + line);
             }
         }
+        // Anomaly Detection
+        detector.detect(aggregator.getErrorsPerMinute());
     }
     catch (Exception e) {
         System.err.println(e.getMessage()) ;
