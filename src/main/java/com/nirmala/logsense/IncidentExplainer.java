@@ -11,12 +11,16 @@ public class IncidentExplainer {
 
     public void explainIncident(Incident incident,
                                 Map<Instant, List<LogModel>> errorLogsByMinute) {
-
+        // service -> count
         Map<String, Integer> serviceCount = new HashMap<>();
+        // errorCode -> count
         Map<String, Integer> errorCodeCount = new HashMap<>();
         int totalErrors = 0;
 
+        // start from incident start minute
         Instant t = incident.getStart();
+
+        // start from incident start minute
         while (!t.isAfter(incident.getEnd())) {
 
             List<LogModel> logs = errorLogsByMinute.get(t);
@@ -37,8 +41,9 @@ public class IncidentExplainer {
 
             t = t.plusSeconds(60);
         }
-
+        // find most frequent service
         String topService = findTop(serviceCount);
+        // find most frequent errorCode
         String topErrorCode = findTop(errorCodeCount);
 
         System.out.println("INCIDENT: " + incident.getStart() + " -> " + incident.getEnd());
