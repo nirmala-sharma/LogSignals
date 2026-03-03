@@ -2,4 +2,13 @@
 {"timestamp":"2026-02-04T10:00:10Z","level":"ERROR","service":"DBService","errorCode":"DB_TIMEOUT","message":"Database connection timeout"}
 {"timestamp":"2026-02-04T10:00:20Z","level":"ERROR","service":"DBService","errorCode":"DB_TIMEOUT","message":"Database connection timeout"}
 {"timestamp":"2026-02-04T10:00:25Z","level":"ERROR","service":"PaymentService","errorCode":"PAYMENT_FAILED","message":"Payment processing failed"}
+{"timestamp":"2026-02-04T10:00:01Z","level":"ERROR","service":"DBService","errorCode":"DB_TIMEOUT","message":"Database timeout"}
 {"timestamp":"2026-02-04T10:01:25Z","level":"ERROR","service":"PaymentService","errorCode":"PAYMENT_FAILED","message":"Payment processing failed"}
+{"timestamp":"2026-02-04T10:01:05Z","level":"ERROR","service":"PaymentService","errorCode":"PAYMENT_FAILED","message":"Payment failed"}
+{"timestamp":"2026-02-04T10:01:15Z","level":"ERROR","service":"PaymentService","errorCode":"PAYMENT_FAILED","message":"Payment failed"}
+{"timestamp":"2026-02-04T10:02:08Z","level":"ERROR","service":"AuthService","errorCode":"TOKEN_SERVICE_DOWN","message":"Token service unavailable"}
+{"timestamp":"2026-02-04T10:02:20Z","level":"ERROR","service":"AuthService","errorCode":"TOKEN_SERVICE_DOWN","message":"Token service unavailable"}
+{"timestamp":"2026-02-04T10:03:12Z","level":"ERROR","service":"Gateway","errorCode":"HTTP_502","message":"Bad gateway"}
+{"timestamp":"2026-02-04T10:03:30Z","level":"ERROR","service":"Gateway","errorCode":"HTTP_502","message":"Bad gateway"}
+{"timestamp":"2026-02-04T10:05:01Z","level":"INFO","service":"OrderService","message":"Order created"}
+{"timestamp":"2026-02-04T10:06:01Z","level":"INFO","service":"AuthService","message":"User login successful"}

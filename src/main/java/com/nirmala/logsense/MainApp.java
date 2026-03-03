@@ -1,5 +1,6 @@
 package com.nirmala.logsense;
 
+import com.nirmala.logsense.model.Incident;
 import com.nirmala.logsense.model.LogModel;
 import com.nirmala.logsense.parser.LogParser;
 import com.sun.tools.javac.Main;
@@ -9,6 +10,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class MainApp {
@@ -44,7 +46,21 @@ public static void main(String[] args){
             }
         }
         // Anomaly Detection
-        detector.detect(aggregator.getErrorsPerMinute());
+        List<Instant> anomalyMinutes = detector.detect(aggregator.getErrorsPerMinute());
+
+
+        // Incident Grouping / Correlation
+        IncidentCorrelator correlator = new IncidentCorrelator();
+        List<Incident> incidents = correlator.group(anomalyMinutes);
+
+        // Explanation
+        IncidentExplainer explainer = new IncidentExplainer();
+        for (Incident incident : incidents) {
+            explainer.explainIncident(
+                    incident,
+                    aggregator.getErrorLogsByMinute()
+            );
+        }
     }
     catch (Exception e) {
         System.err.println(e.getMessage()) ;
