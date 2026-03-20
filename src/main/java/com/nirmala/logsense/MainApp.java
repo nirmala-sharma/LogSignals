@@ -18,7 +18,7 @@ public class MainApp {
 public static void main(String[] args){
     Map<Instant, Integer> errorsPerMinute = new HashMap<>();
     Aggregator aggregator = new Aggregator();
-    AnomalyDetector detector = new AnomalyDetector(2);
+    AnomalyDetector detector = new AnomalyDetector();
 
 
     try (InputStream is = Main.class
