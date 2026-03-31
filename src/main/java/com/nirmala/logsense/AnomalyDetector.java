@@ -1,41 +1,69 @@
 package com.nirmala.logsense;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Map;
+import java.util.*;
 
 public class AnomalyDetector {
 
-    private final int threshold;
+    public AnomalyDetector() {}
 
-    public AnomalyDetector(int threshold) {
-        this.threshold = threshold;
-    }
-
-    public ArrayList<Instant> detect(Map<Instant, Integer> errorsPerMinute) {
+    public ArrayList<Instant> detect(Map<Instant, Integer> errorsPerMinute, int winSize, double minimumStandardDeviation, int minimumSamples) {
 
         ArrayList<Instant> anomalyMinutes = new ArrayList<>();
 
-        for (Map.Entry<Instant, Integer> entry : errorsPerMinute.entrySet()) {
+        List<Instant> sortedMinutes = new ArrayList<>(errorsPerMinute.keySet());
+        Collections.sort(sortedMinutes);
 
-            Instant minute = entry.getKey();
-            int count = entry.getValue();
+        Deque<Integer> rollingWindow = new ArrayDeque<>();   // Stores only the last N minutes
 
-            if (count > threshold) {
+        int windowSize = winSize;
+        double k = 2.0;           // sensitivity multiplier
+        double minStdDev = minimumStandardDeviation;   // avoids overly tight threshold
+        int minSamples = minimumSamples;       // warm-up
 
-                System.out.println(
-                        "ANOMALY detected at " + minute +
-                                " | error_count = " + count
-                );
+        for (Instant minute : sortedMinutes) {
+            int currentCount = errorsPerMinute.get(minute);
 
-                anomalyMinutes.add(minute);
+            if (rollingWindow.size() >= minSamples) {
+                double mean = calculateMean(rollingWindow);
+                double stdDev = calculateStdDev(rollingWindow, mean);
+                stdDev = Math.max(stdDev, minStdDev);
+
+                double dynamicThreshold = mean + (k * stdDev);
+
+                if (currentCount > dynamicThreshold) {
+                    System.out.println(
+                            "ANOMALY detected at " + minute +
+                                    " | error_count = " + currentCount +
+                                    " | rolling_mean = " + mean +
+                                    " | rolling_stdDev = " + stdDev +
+                                    " | dynamic_threshold = " + dynamicThreshold
+                    );
+                    anomalyMinutes.add(minute);
+                }
+            }
+            rollingWindow.addLast(currentCount);
+
+            if (rollingWindow.size() > windowSize) {
+                rollingWindow.removeFirst();
             }
         }
-
-        // sort minutes in chronological order
-        Collections.sort(anomalyMinutes);
-
         return anomalyMinutes;
+    }
+    private double calculateMean(Deque<Integer> window) {
+        double sum = 0;
+        for (int value : window) {
+            sum += value;
+        }
+        return sum / window.size();
+    }
+
+    private double calculateStdDev(Deque<Integer> window, double mean) {
+        double sum = 0;
+        for (int value : window) {
+            double diff = value - mean;
+            sum += diff * diff;
+        }
+        return Math.sqrt(sum / window.size());
     }
 }

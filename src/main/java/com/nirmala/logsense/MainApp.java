@@ -18,8 +18,10 @@ public class MainApp {
 public static void main(String[] args){
     Map<Instant, Integer> errorsPerMinute = new HashMap<>();
     Aggregator aggregator = new Aggregator();
-    AnomalyDetector detector = new AnomalyDetector(2);
-
+    AnomalyDetector detector = new AnomalyDetector();
+    int windowSize =4;
+    double minimumStandardDeviation = 1.0;
+    int minimumSamples = 3;
 
     try (InputStream is = Main.class
             .getClassLoader()
@@ -46,7 +48,7 @@ public static void main(String[] args){
             }
         }
         // Anomaly Detection
-        List<Instant> anomalyMinutes = detector.detect(aggregator.getErrorsPerMinute());
+        List<Instant> anomalyMinutes = detector.detect(aggregator.getErrorsPerMinute(),windowSize,minimumStandardDeviation,minimumSamples);
 
 
         // Incident Grouping / Correlation
@@ -68,3 +70,4 @@ public static void main(String[] args){
 
   }
 }
+
