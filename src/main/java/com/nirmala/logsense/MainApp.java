@@ -19,9 +19,9 @@ public static void main(String[] args){
     Map<Instant, Integer> errorsPerMinute = new HashMap<>();
     Aggregator aggregator = new Aggregator();
     AnomalyDetector detector = new AnomalyDetector();
-    int windowSize =4;
+    int windowSize =1;
     double minimumStandardDeviation = 1.0;
-    int minimumSamples = 3;
+    int minimumSamples = 1;
 
     try (InputStream is = Main.class
             .getClassLoader()
@@ -48,26 +48,42 @@ public static void main(String[] args){
             }
         }
         // Anomaly Detection
-        List<Instant> anomalyMinutes = detector.detect(aggregator.getErrorsPerMinute(),windowSize,minimumStandardDeviation,minimumSamples);
-
+        Map<String, Map<String, List<Instant>>> anomalyMap =
+                detector.detect(
+                        aggregator.getErrorCount(),
+                        windowSize,
+                        minimumStandardDeviation,
+                        minimumSamples
+                );
 
         // Incident Grouping / Correlation
         IncidentCorrelator correlator = new IncidentCorrelator();
-        List<Incident> incidents = correlator.group(anomalyMinutes);
 
-        // Explanation
+        Map<String, Map<String, List<Incident>>> incidentsByServiceAndErrorCode =
+                correlator.group(anomalyMap);
+
         IncidentExplainer explainer = new IncidentExplainer();
-        for (Incident incident : incidents) {
-            explainer.explainIncident(
-                    incident,
-                    aggregator.getErrorLogsByMinute()
-            );
+
+        for (Map.Entry<String, Map<String, List<Incident>>> serviceEntry : incidentsByServiceAndErrorCode.entrySet()) {
+            String service = serviceEntry.getKey();
+
+            for (Map.Entry<String, List<Incident>> errorEntry : serviceEntry.getValue().entrySet()) {
+                String errorCode = errorEntry.getKey();
+
+                for (Incident incident : errorEntry.getValue()) {
+                    explainer.explainIncident(
+                            service,
+                            errorCode,
+                            incident,
+                            aggregator.getErrorLogs()
+                    );
+                }
+            }
         }
     }
     catch (Exception e) {
         System.err.println(e.getMessage()) ;
     }
-
   }
 }
 
