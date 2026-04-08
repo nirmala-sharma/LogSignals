@@ -4,52 +4,76 @@ import java.time.Instant;
 import java.util.*;
 
 public class AnomalyDetector {
-
     public AnomalyDetector() {}
 
-    public ArrayList<Instant> detect(Map<Instant, Integer> errorsPerMinute, int winSize, double minimumStandardDeviation, int minimumSamples) {
+    public Map<String, Map<String, List<Instant>>> detect(
+            Map<String, Map<String, Map<Instant, Integer>>> errorsPerServiceAndCode,
+            int winSize,
+            double minimumStandardDeviation,
+            int minimumSamples) {
 
-        ArrayList<Instant> anomalyMinutes = new ArrayList<>();
-
-        List<Instant> sortedMinutes = new ArrayList<>(errorsPerMinute.keySet());
-        Collections.sort(sortedMinutes);
-
-        Deque<Integer> rollingWindow = new ArrayDeque<>();   // Stores only the last N minutes
+        Map<String, Map<String, List<Instant>>> anomalies = new HashMap<>();
 
         int windowSize = winSize;
-        double k = 2.0;           // sensitivity multiplier
-        double minStdDev = minimumStandardDeviation;   // avoids overly tight threshold
-        int minSamples = minimumSamples;       // warm-up
+        double k = 2.0;
+        double minStdDev = minimumStandardDeviation;
+        int minSamples = minimumSamples;
 
-        for (Instant minute : sortedMinutes) {
-            int currentCount = errorsPerMinute.get(minute);
+        for (Map.Entry<String, Map<String, Map<Instant, Integer>>> serviceEntry : errorsPerServiceAndCode.entrySet()) {
+            String service = serviceEntry.getKey();
+            Map<String, Map<Instant, Integer>> errorCodeMap = serviceEntry.getValue();
 
-            if (rollingWindow.size() >= minSamples) {
-                double mean = calculateMean(rollingWindow);
-                double stdDev = calculateStdDev(rollingWindow, mean);
-                stdDev = Math.max(stdDev, minStdDev);
+            for (Map.Entry<String, Map<Instant, Integer>> errorEntry : errorCodeMap.entrySet()) {
+                String errorCode = errorEntry.getKey();
+                Map<Instant, Integer> minuteCounts = errorEntry.getValue();
 
-                double dynamicThreshold = mean + (k * stdDev);
+                List<Instant> sortedMinutes = new ArrayList<>(minuteCounts.keySet());
+                Collections.sort(sortedMinutes);
 
-                if (currentCount > dynamicThreshold) {
-                    System.out.println(
-                            "ANOMALY detected at " + minute +
-                                    " | error_count = " + currentCount +
-                                    " | rolling_mean = " + mean +
-                                    " | rolling_stdDev = " + stdDev +
-                                    " | dynamic_threshold = " + dynamicThreshold
-                    );
-                    anomalyMinutes.add(minute);
+                Deque<Integer> rollingWindow = new ArrayDeque<>();
+                List<Instant> anomalyMinutes = new ArrayList<>();
+
+                for (Instant minute : sortedMinutes) {
+                    int currentCount = minuteCounts.get(minute);
+
+                    if (rollingWindow.size() >= minSamples) {
+                        double mean = calculateMean(rollingWindow);
+                        double stdDev = calculateStdDev(rollingWindow, mean);
+                        stdDev = Math.max(stdDev, minStdDev);
+
+                        double dynamicThreshold = mean + (k * stdDev);
+
+                        if (currentCount > dynamicThreshold) {
+                            System.out.println(
+                                    "ANOMALY detected at " + minute +
+                                            " | service = " + service +
+                                            " | errorCode = " + errorCode +
+                                            " | error_count = " + currentCount +
+                                            " | rolling_mean = " + mean +
+                                            " | rolling_stdDev = " + stdDev +
+                                            " | dynamic_threshold = " + dynamicThreshold
+                            );
+                            anomalyMinutes.add(minute);
+                        }
+                    }
+                    rollingWindow.addLast(currentCount);
+
+                    if (rollingWindow.size() > windowSize) {
+                        rollingWindow.removeFirst();
+                    }
+                }
+
+                if (!anomalyMinutes.isEmpty()) {
+                    anomalies
+                            .computeIfAbsent(service, s -> new HashMap<>())
+                            .put(errorCode, anomalyMinutes);
                 }
             }
-            rollingWindow.addLast(currentCount);
-
-            if (rollingWindow.size() > windowSize) {
-                rollingWindow.removeFirst();
-            }
         }
-        return anomalyMinutes;
+
+        return anomalies;
     }
+
     private double calculateMean(Deque<Integer> window) {
         double sum = 0;
         for (int value : window) {
