@@ -1,4 +1,5 @@
 package com.nirmala.logsense;
+
 import com.nirmala.logsense.model.Incident;
 import com.nirmala.logsense.model.LogModel;
 
@@ -20,10 +21,10 @@ public class IncidentExplainer {
                 errorLogsByServiceAndErrorCode.get(service);
 
         if (errorCodeMap == null) {
-            System.out.println("INCIDENT: " + incident.getStart() + " -> " + incident.getEnd());
-            System.out.println("Service: " + service);
-            System.out.println("Error Code: " + errorCode);
-            System.out.println("Total Errors: 0");
+            String explanation = buildExplanation(service, errorCode, incident, totalErrors);
+            incident.setExplanation(explanation);
+
+            System.out.println(explanation);
             System.out.println("----------------------------------");
             return;
         }
@@ -31,10 +32,10 @@ public class IncidentExplainer {
         Map<Instant, List<LogModel>> logsByMinute = errorCodeMap.get(errorCode);
 
         if (logsByMinute == null) {
-            System.out.println("INCIDENT: " + incident.getStart() + " -> " + incident.getEnd());
-            System.out.println("Service: " + service);
-            System.out.println("Error Code: " + errorCode);
-            System.out.println("Total Errors: 0");
+            String explanation = buildExplanation(service, errorCode, incident, totalErrors);
+            incident.setExplanation(explanation);
+
+            System.out.println(explanation);
             System.out.println("----------------------------------");
             return;
         }
@@ -49,11 +50,16 @@ public class IncidentExplainer {
             t = t.plusSeconds(60);
         }
 
-        System.out.println("INCIDENT: " + incident.getStart() + " -> " + incident.getEnd());
-        System.out.println("Service: " + service);
-        System.out.println("Error Code: " + errorCode);
-        System.out.println("Total Errors: " + totalErrors);
+        String explanation = buildExplanation(service, errorCode, incident, totalErrors);
+        incident.setExplanation(explanation);
+
+        System.out.println(explanation);
         System.out.println("----------------------------------");
+    }
+
+    private String buildExplanation(String service, String errorCode, Incident incident, int totalErrors) {
+        return service + " had " + totalErrors + " " + errorCode +
+                " errors at " + incident.getStart() + ".";
     }
 
     private String findTop(Map<String, Integer> counts) {

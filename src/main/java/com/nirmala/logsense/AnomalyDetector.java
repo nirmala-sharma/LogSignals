@@ -43,7 +43,7 @@ public class AnomalyDetector {
 
                         double dynamicThreshold = mean + (k * stdDev);
 
-                        if (currentCount > dynamicThreshold) {
+                        if (currentCount >= dynamicThreshold) {
                             System.out.println(
                                     "ANOMALY detected at " + minute +
                                             " | service = " + service +
