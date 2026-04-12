@@ -1,13 +1,16 @@
 package com.nirmala.logsense.controller;
 
+import com.nirmala.logsense.dtos.LogAnalysisResponseDTO;
 import com.nirmala.logsense.service.LogAnalysisService;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
 import java.util.Map;
 
 @RestController
+@RequestMapping("/api/logs")
 public class LogAnalysisController {
 
     private final LogAnalysisService logService;
@@ -16,10 +19,10 @@ public class LogAnalysisController {
         this.logService = logService;
     }
 
-    @GetMapping("/analyze")
-    public Map<String, String> analyzeLogs() {
+    @PostMapping(value = "/analyze", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public LogAnalysisResponseDTO analyzeLogs(@RequestPart("file") MultipartFile file) {
         Map<String, String> response = new HashMap<>();
-        response.put("message", logService.runAnalysis());
-        return response;
+       return logService.runAnalysis(file);
+
     }
 }
