@@ -1,8 +1,11 @@
 package com.nirmala.logsense;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.time.Instant;
 import java.util.*;
 
+@Slf4j  // This automatically creates a `log` object for this class
 public class AnomalyDetector {
     public AnomalyDetector() {}
 
@@ -44,15 +47,10 @@ public class AnomalyDetector {
                         double dynamicThreshold = mean + (k * stdDev);
 
                         if (currentCount >= dynamicThreshold) {
-                            System.out.println(
-                                    "ANOMALY detected at " + minute +
-                                            " | service = " + service +
-                                            " | errorCode = " + errorCode +
-                                            " | error_count = " + currentCount +
-                                            " | rolling_mean = " + mean +
-                                            " | rolling_stdDev = " + stdDev +
-                                            " | dynamic_threshold = " + dynamicThreshold
-                            );
+                            // BEFORE: System.out.println("ANOMALY detected at ...")
+                            // AFTER: log.info(...) — proper structured logging
+                            log.info("ANOMALY detected at {} | service={} | errorCode={} | error_count={} | rolling_mean={} | rolling_stdDev={} | dynamic_threshold={}",
+                                    minute, service, errorCode, currentCount, mean, stdDev, dynamicThreshold);
                             anomalyMinutes.add(minute);
                         }
                     }

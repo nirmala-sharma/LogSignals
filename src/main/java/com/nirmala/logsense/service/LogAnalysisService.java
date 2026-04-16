@@ -8,6 +8,7 @@ import com.nirmala.logsense.dtos.LogAnalysisResponseDTO;
 import com.nirmala.logsense.model.Incident;
 import com.nirmala.logsense.model.LogModel;
 import com.nirmala.logsense.parser.LogParser;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@Slf4j      // This automatically creates a `log` object for this class
 public class LogAnalysisService {
     public LogAnalysisResponseDTO runAnalysis(MultipartFile file) {
         LogAnalysisResponseDTO response = new LogAnalysisResponseDTO();
@@ -54,8 +56,9 @@ public class LogAnalysisService {
 
                     } catch (Exception e) {
                         invalidLines++;
-                        System.err.println("Invalid log line: " + line);
-                    }
+                        // BEFORE: System.err.println("Invalid log line: " + line)
+                        // AFTER: log.warn(...) — "warn" is correct here because it's not a crash, just a bad line
+                        log.warn("Invalid log line skipped: {}", line);                    }
                 }
             }
                 // Anomaly Detection
@@ -91,6 +94,9 @@ public class LogAnalysisService {
                         }
                     }
                 }
+            // BEFORE: no log at all when analysis succeeds
+            // AFTER: log info so we can see in logs when analysis finishes
+            log.info("Analysis completed successfully. totalLines={}, invalidLines={}", totalLines, invalidLines);
             response.setStatus("success");
             response.setMessage("Analysis completed successfully");
             response.setTotalLines(totalLines);
@@ -100,7 +106,9 @@ public class LogAnalysisService {
 
             return response;
             } catch (Exception e) {
-            e.printStackTrace();
+            // BEFORE: e.printStackTrace() — messy, hard to read in production
+            // AFTER: log.error(..., e) — clean, structured, includes stack trace properly
+            log.error("Analysis failed: {}", e.getMessage(), e);
             response.setStatus("failed");
             response.setMessage("Analysis failed: " + e.getMessage());
             response.setTotalLines(totalLines);
