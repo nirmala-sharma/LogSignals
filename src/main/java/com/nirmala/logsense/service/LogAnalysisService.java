@@ -5,6 +5,7 @@ import com.nirmala.logsense.AnomalyDetector;
 import com.nirmala.logsense.IncidentCorrelator;
 import com.nirmala.logsense.IncidentExplainer;
 import com.nirmala.logsense.dtos.LogAnalysisResponseDTO;
+import com.nirmala.logsense.exception.EmptyLogFileException;
 import com.nirmala.logsense.model.Incident;
 import com.nirmala.logsense.model.LogModel;
 import com.nirmala.logsense.parser.LogParser;
@@ -38,7 +39,7 @@ public class LogAnalysisService {
         try {
 
             if (file == null || file.isEmpty()) {
-                throw new RuntimeException("Uploaded log file is empty");
+                throw new EmptyLogFileException("Uploaded log file is empty");
             }
             try (InputStream is = file.getInputStream();
                  BufferedReader reader = new BufferedReader(
@@ -105,16 +106,22 @@ public class LogAnalysisService {
             response.setIncidents(incidentsByServiceAndErrorCode);
 
             return response;
-            } catch (Exception e) {
-            // BEFORE: e.printStackTrace() — messy, hard to read in production
-            // AFTER: log.error(..., e) — clean, structured, includes stack trace properly
+        } catch (EmptyLogFileException e) {
+            log.error("Empty file error: {}", e.getMessage());
+            response.setStatus("failed");
+            response.setMessage(e.getMessage());
+            response.setTotalLines(totalLines);
+            response.setInvalidLines(invalidLines);
+            return response;
+
+        } catch (Exception e) {
             log.error("Analysis failed: {}", e.getMessage(), e);
             response.setStatus("failed");
             response.setMessage("Analysis failed: " + e.getMessage());
             response.setTotalLines(totalLines);
             response.setInvalidLines(invalidLines);
             return response;
-            }
         }
     }
+}
 
