@@ -1,5 +1,6 @@
 package com.nirmala.logsense;
 
+import com.nirmala.logsense.config.AnomalyDetectionConfig;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
@@ -11,16 +12,14 @@ public class AnomalyDetector {
 
     public Map<String, Map<String, List<Instant>>> detect(
             Map<String, Map<String, Map<Instant, Integer>>> errorsPerServiceAndCode,
-            int winSize,
-            double minimumStandardDeviation,
-            int minimumSamples) {
+            AnomalyDetectionConfig config) {
 
         Map<String, Map<String, List<Instant>>> anomalies = new HashMap<>();
 
-        int windowSize = winSize;
-        double k = 2.0;
-        double minStdDev = minimumStandardDeviation;
-        int minSamples = minimumSamples;
+        int windowSize = config.getWindowSize();
+        double k = config.getThreshold();
+        double minStdDev = config.getMinimumStandardDeviation();
+        int minSamples = config.getMinimumSamples();
 
         for (Map.Entry<String, Map<String, Map<Instant, Integer>>> serviceEntry : errorsPerServiceAndCode.entrySet()) {
             String service = serviceEntry.getKey();

@@ -4,6 +4,7 @@ import com.nirmala.logsense.Aggregator;
 import com.nirmala.logsense.AnomalyDetector;
 import com.nirmala.logsense.IncidentCorrelator;
 import com.nirmala.logsense.IncidentExplainer;
+import com.nirmala.logsense.config.AnomalyDetectionConfig;
 import com.nirmala.logsense.dtos.LogAnalysisResponseDTO;
 import com.nirmala.logsense.exception.EmptyLogFileException;
 import com.nirmala.logsense.model.Incident;
@@ -25,14 +26,16 @@ import java.util.Map;
 @Service
 @Slf4j      // This automatically creates a `log` object for this class
 public class LogAnalysisService {
+    private final AnomalyDetectionConfig config;
+    // Constructor injection
+    public LogAnalysisService(AnomalyDetectionConfig config) {
+        this.config = config;
+    }
     public LogAnalysisResponseDTO runAnalysis(MultipartFile file) {
         LogAnalysisResponseDTO response = new LogAnalysisResponseDTO();
         Map<Instant, Integer> errorsPerMinute = new HashMap<>();
         Aggregator aggregator = new Aggregator();
         AnomalyDetector detector = new AnomalyDetector();
-        int windowSize = 1;
-        double minimumStandardDeviation = 1.0;
-        int minimumSamples = 1;
 
         int totalLines=0;
         int invalidLines =0;
@@ -57,8 +60,7 @@ public class LogAnalysisService {
 
                     } catch (Exception e) {
                         invalidLines++;
-                        // BEFORE: System.err.println("Invalid log line: " + line)
-                        // AFTER: log.warn(...) — "warn" is correct here because it's not a crash, just a bad line
+                        // "warn" is correct here because it's not a crash, just a bad line
                         log.warn("Invalid log line skipped: {}", line);                    }
                 }
             }
@@ -66,9 +68,7 @@ public class LogAnalysisService {
                 Map<String, Map<String, List<Instant>>> anomalyMap =
                         detector.detect(
                                 aggregator.getErrorCount(),
-                                windowSize,
-                                minimumStandardDeviation,
-                                minimumSamples
+                                config
                         );
 
                 // Incident Grouping / Correlation
