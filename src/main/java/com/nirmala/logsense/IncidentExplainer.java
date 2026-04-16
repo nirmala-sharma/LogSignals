@@ -2,11 +2,13 @@ package com.nirmala.logsense;
 
 import com.nirmala.logsense.model.Incident;
 import com.nirmala.logsense.model.LogModel;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 public class IncidentExplainer {
 
     public void explainIncident(
@@ -24,8 +26,10 @@ public class IncidentExplainer {
             String explanation = buildExplanation(service, errorCode, incident, totalErrors);
             incident.setExplanation(explanation);
 
-            System.out.println(explanation);
-            System.out.println("----------------------------------");
+            // BEFORE: System.out.println(explanation)
+            // AFTER: log.info(...) — structured, controllable logging
+            log.info(explanation);
+            log.info("----------------------------------");
             return;
         }
 
@@ -35,8 +39,8 @@ public class IncidentExplainer {
             String explanation = buildExplanation(service, errorCode, incident, totalErrors);
             incident.setExplanation(explanation);
 
-            System.out.println(explanation);
-            System.out.println("----------------------------------");
+            log.info(explanation);
+            log.info("----------------------------------");
             return;
         }
 
@@ -53,8 +57,8 @@ public class IncidentExplainer {
         String explanation = buildExplanation(service, errorCode, incident, totalErrors);
         incident.setExplanation(explanation);
 
-        System.out.println(explanation);
-        System.out.println("----------------------------------");
+        log.info(explanation);
+        log.info("----------------------------------");
     }
 
     private String buildExplanation(String service, String errorCode, Incident incident, int totalErrors) {
