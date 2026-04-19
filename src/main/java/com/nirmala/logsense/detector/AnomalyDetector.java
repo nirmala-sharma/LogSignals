@@ -1,4 +1,4 @@
-package com.nirmala.logsense;
+package com.nirmala.logsense.detector;
 
 import com.nirmala.logsense.config.AnomalyDetectionConfig;
 import lombok.extern.slf4j.Slf4j;

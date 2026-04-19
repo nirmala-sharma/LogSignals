@@ -1,4 +1,4 @@
-package com.nirmala.logsense.dtos;
+package com.nirmala.logsense.dto;
 
 import com.nirmala.logsense.model.Incident;
 import lombok.Data;

@@ -1,4 +1,4 @@
-package com.nirmala.logsense;
+package com.nirmala.logsense.explainer;
 
 import com.nirmala.logsense.model.Incident;
 import com.nirmala.logsense.model.LogModel;
