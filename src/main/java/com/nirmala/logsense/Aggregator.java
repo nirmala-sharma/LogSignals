@@ -1,6 +1,9 @@
 package com.nirmala.logsense;
 
 import com.nirmala.logsense.model.LogModel;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
+
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -8,7 +11,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class Aggregator{
+@Component
+@Scope("prototype")  // creates a NEW instance for every injection
+public class Aggregator {
 
     // service -> errorCode -> minute -> count
     private final Map<String, Map<String, Map<Instant, Integer>>> errorCount = new HashMap<>();
@@ -46,6 +51,7 @@ public class Aggregator{
     public Map<String, Map<String, Map<Instant, List<LogModel>>>> getErrorLogs() {
         return errorLogs;
     }
+
     public Map<Instant, Integer> getTotalErrorsPerMinute() {
         Map<Instant, Integer> totalErrorsPerMinute = new HashMap<>();
 

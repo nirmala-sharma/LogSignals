@@ -2,13 +2,16 @@ package com.nirmala.logsense;
 
 import com.nirmala.logsense.config.AnomalyDetectionConfig;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.*;
 
 @Slf4j  // This automatically creates a `log` object for this class
+@Component
 public class AnomalyDetector {
-    public AnomalyDetector() {}
+    public AnomalyDetector() {
+    }
 
     public Map<String, Map<String, List<Instant>>> detect(
             Map<String, Map<String, Map<Instant, Integer>>> errorsPerServiceAndCode,

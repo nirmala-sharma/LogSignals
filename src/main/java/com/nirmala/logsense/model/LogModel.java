@@ -19,11 +19,25 @@ public class LogModel {
         this.message = message;
     }
 
-    public Instant getTimestamp() { return timestamp; }
-    public String getLevel() { return level; }
-    public String getService() { return service; }
-    public String getErrorCode() { return errorCode; }
-    public String getMessage() { return message; }
+    public Instant getTimestamp() {
+        return timestamp;
+    }
+
+    public String getLevel() {
+        return level;
+    }
+
+    public String getService() {
+        return service;
+    }
+
+    public String getErrorCode() {
+        return errorCode;
+    }
+
+    public String getMessage() {
+        return message;
+    }
 
     @Override
     public String toString() {
