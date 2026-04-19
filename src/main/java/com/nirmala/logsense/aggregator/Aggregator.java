@@ -1,5 +1,6 @@
 package com.nirmala.logsense.aggregator;
 
+import com.nirmala.logsense.model.AggregationKey;
 import com.nirmala.logsense.model.LogModel;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -16,51 +17,48 @@ import java.util.Map;
 public class Aggregator {
 
     // service -> errorCode -> minute -> count
-    private final Map<String, Map<String, Map<Instant, Integer>>> errorCount = new HashMap<>();
+    private final Map<AggregationKey, Integer> errorCount = new HashMap<>();
 
     // service -> errorCode -> minute -> logs
-    private final Map<String, Map<String, Map<Instant, List<LogModel>>>> errorLogs = new HashMap<>();
+    //  Map<AggregationKey, List<LogModel>> — flat, clean, readable
+    private final Map<AggregationKey, List<LogModel>> errorLogs = new HashMap<>();
 
     public void add(LogModel log) {
         if (log == null) {
             return;
         }
-
         Instant minuteBucket = log.getTimestamp().truncatedTo(ChronoUnit.MINUTES);
-        String service = log.getService();
-        String errorCode = log.getErrorCode();
 
-        // Count per service + errorCode + minute
-        errorCount
-                .computeIfAbsent(service, s -> new HashMap<>())
-                .computeIfAbsent(errorCode, e -> new HashMap<>())
-                .merge(minuteBucket, 1, Integer::sum);
+        AggregationKey key = new AggregationKey(
+                log.getService(),
+                log.getErrorCode(),
+                minuteBucket
+        );
 
-        // Store logs per service + errorCode + minute
-        errorLogs
-                .computeIfAbsent(service, s -> new HashMap<>())
-                .computeIfAbsent(errorCode, e -> new HashMap<>())
-                .computeIfAbsent(minuteBucket, m -> new ArrayList<>())
-                .add(log);
+        // count errors per key
+        errorCount.merge(key, 1, Integer::sum);
+
+        // store logs per key
+        errorLogs.computeIfAbsent(key, k -> new ArrayList<>()).add(log);
     }
 
-    public Map<String, Map<String, Map<Instant, Integer>>> getErrorCount() {
+
+    public Map<AggregationKey, Integer> getErrorCount() {
         return errorCount;
     }
 
-    public Map<String, Map<String, Map<Instant, List<LogModel>>>> getErrorLogs() {
+    public Map<AggregationKey, List<LogModel>> getErrorLogs() {
         return errorLogs;
     }
 
     public Map<Instant, Integer> getTotalErrorsPerMinute() {
         Map<Instant, Integer> totalErrorsPerMinute = new HashMap<>();
-
-        for (Map<String, Map<Instant, Integer>> errorCodeMap : errorCount.values()) {
-            for (Map<Instant, Integer> minuteMap : errorCodeMap.values()) {
-                for (Map.Entry<Instant, Integer> entry : minuteMap.entrySet()) {
-                    totalErrorsPerMinute.merge(entry.getKey(), entry.getValue(), Integer::sum);
-                }
-            }
+        for (Map.Entry<AggregationKey, Integer> entry : errorCount.entrySet()) {
+            totalErrorsPerMinute.merge(
+                    entry.getKey().getMinuteBucket(),
+                    entry.getValue(),
+                    Integer::sum
+            );
         }
         return totalErrorsPerMinute;
     }

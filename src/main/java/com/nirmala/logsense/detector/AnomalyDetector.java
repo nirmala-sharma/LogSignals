@@ -1,6 +1,7 @@
 package com.nirmala.logsense.detector;
 
 import com.nirmala.logsense.config.AnomalyDetectionConfig;
+import com.nirmala.logsense.model.AggregationKey;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -14,7 +15,7 @@ public class AnomalyDetector {
     }
 
     public Map<String, Map<String, List<Instant>>> detect(
-            Map<String, Map<String, Map<Instant, Integer>>> errorsPerServiceAndCode,
+            Map<AggregationKey, Integer> errorCount,
             AnomalyDetectionConfig config) {
 
         Map<String, Map<String, List<Instant>>> anomalies = new HashMap<>();
@@ -24,11 +25,22 @@ public class AnomalyDetector {
         double minStdDev = config.getMinimumStandardDeviation();
         int minSamples = config.getMinimumSamples();
 
-        for (Map.Entry<String, Map<String, Map<Instant, Integer>>> serviceEntry : errorsPerServiceAndCode.entrySet()) {
-            String service = serviceEntry.getKey();
-            Map<String, Map<Instant, Integer>> errorCodeMap = serviceEntry.getValue();
+        // Group by service + errorCode first
+        Map<String, Map<String, Map<Instant, Integer>>> grouped = new HashMap<>();
 
-            for (Map.Entry<String, Map<Instant, Integer>> errorEntry : errorCodeMap.entrySet()) {
+        for (Map.Entry<AggregationKey, Integer> entry : errorCount.entrySet()) {
+            AggregationKey key = entry.getKey();
+            grouped
+                    .computeIfAbsent(key.getService(), s -> new HashMap<>())
+                    .computeIfAbsent(key.getErrorCode(), e -> new HashMap<>())
+                    .put(key.getMinuteBucket(), entry.getValue());
+        }
+
+        // Run detection on grouped data
+        for (Map.Entry<String, Map<String, Map<Instant, Integer>>> serviceEntry : grouped.entrySet()) {
+            String service = serviceEntry.getKey();
+
+            for (Map.Entry<String, Map<Instant, Integer>> errorEntry : serviceEntry.getValue().entrySet()) {
                 String errorCode = errorEntry.getKey();
                 Map<Instant, Integer> minuteCounts = errorEntry.getValue();
 
@@ -43,21 +55,17 @@ public class AnomalyDetector {
 
                     if (rollingWindow.size() >= minSamples) {
                         double mean = calculateMean(rollingWindow);
-                        double stdDev = calculateStdDev(rollingWindow, mean);
-                        stdDev = Math.max(stdDev, minStdDev);
-
+                        double stdDev = Math.max(calculateStdDev(rollingWindow, mean), minStdDev);
                         double dynamicThreshold = mean + (k * stdDev);
 
                         if (currentCount >= dynamicThreshold) {
-                            // BEFORE: System.out.println("ANOMALY detected at ...")
-                            // AFTER: log.info(...) — proper structured logging
-                            log.info("ANOMALY detected at {} | service={} | errorCode={} | error_count={} | rolling_mean={} | rolling_stdDev={} | dynamic_threshold={}",
+                            log.info("ANOMALY detected at {} | service={} | errorCode={} | count={} | mean={} | stdDev={} | threshold={}",
                                     minute, service, errorCode, currentCount, mean, stdDev, dynamicThreshold);
                             anomalyMinutes.add(minute);
                         }
                     }
-                    rollingWindow.addLast(currentCount);
 
+                    rollingWindow.addLast(currentCount);
                     if (rollingWindow.size() > windowSize) {
                         rollingWindow.removeFirst();
                     }
@@ -70,10 +78,8 @@ public class AnomalyDetector {
                 }
             }
         }
-
         return anomalies;
     }
-
     private double calculateMean(Deque<Integer> window) {
         double sum = 0;
         for (int value : window) {
