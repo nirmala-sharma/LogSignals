@@ -3,7 +3,10 @@ package com.nirmala.logsense.controller;
 import com.nirmala.logsense.dtos.LogAnalysisResponseDTO;
 import com.nirmala.logsense.service.LogAnalysisService;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
@@ -22,7 +25,7 @@ public class LogAnalysisController {
     @PostMapping(value = "/analyze", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public LogAnalysisResponseDTO analyzeLogs(@RequestPart("file") MultipartFile file) {
         Map<String, String> response = new HashMap<>();
-       return logService.runAnalysis(file);
+        return logService.runAnalysis(file);
 
     }
 }

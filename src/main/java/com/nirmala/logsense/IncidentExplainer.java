@@ -3,12 +3,14 @@ package com.nirmala.logsense;
 import com.nirmala.logsense.model.Incident;
 import com.nirmala.logsense.model.LogModel;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
 @Slf4j
+@Component
 public class IncidentExplainer {
 
     public void explainIncident(

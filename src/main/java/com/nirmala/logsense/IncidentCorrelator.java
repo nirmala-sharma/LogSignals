@@ -1,10 +1,12 @@
 package com.nirmala.logsense;
 
 import com.nirmala.logsense.model.Incident;
+import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.*;
 
+@Component
 public class IncidentCorrelator {
 
     public Map<String, Map<String, List<Incident>>> group(
@@ -66,18 +68,6 @@ public class IncidentCorrelator {
         return incidents;
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 //public class IncidentCorrelator {
