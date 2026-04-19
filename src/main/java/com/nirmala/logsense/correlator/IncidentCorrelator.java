@@ -1,4 +1,4 @@
-package com.nirmala.logsense;
+package com.nirmala.logsense.correlator;
 
 import com.nirmala.logsense.model.Incident;
 import org.springframework.stereotype.Component;

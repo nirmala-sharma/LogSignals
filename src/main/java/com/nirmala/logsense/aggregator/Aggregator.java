@@ -1,4 +1,4 @@
-package com.nirmala.logsense;
+package com.nirmala.logsense.aggregator;
 
 import com.nirmala.logsense.model.LogModel;
 import org.springframework.context.annotation.Scope;

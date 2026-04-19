@@ -1,6 +1,6 @@
 package com.nirmala.logsense.controller;
 
-import com.nirmala.logsense.dtos.LogAnalysisResponseDTO;
+import com.nirmala.logsense.dto.LogAnalysisResponseDTO;
 import com.nirmala.logsense.service.LogAnalysisService;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;

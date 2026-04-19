@@ -1,11 +1,11 @@
 package com.nirmala.logsense.service;
 
-import com.nirmala.logsense.Aggregator;
-import com.nirmala.logsense.AnomalyDetector;
-import com.nirmala.logsense.IncidentCorrelator;
-import com.nirmala.logsense.IncidentExplainer;
+import com.nirmala.logsense.aggregator.Aggregator;
+import com.nirmala.logsense.detector.AnomalyDetector;
+import com.nirmala.logsense.correlator.IncidentCorrelator;
+import com.nirmala.logsense.explainer.IncidentExplainer;
 import com.nirmala.logsense.config.AnomalyDetectionConfig;
-import com.nirmala.logsense.dtos.LogAnalysisResponseDTO;
+import com.nirmala.logsense.dto.LogAnalysisResponseDTO;
 import com.nirmala.logsense.exception.EmptyLogFileException;
 import com.nirmala.logsense.model.Incident;
 import com.nirmala.logsense.model.LogModel;
