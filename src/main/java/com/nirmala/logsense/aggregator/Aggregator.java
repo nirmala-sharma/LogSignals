@@ -15,7 +15,8 @@ import java.util.Map;
 @Component
 @Scope("prototype")  // creates a NEW instance for every injection
 public class Aggregator {
-
+    private int totalLines;
+    private int invalidLines;
     // service -> errorCode -> minute -> count
     private final Map<AggregationKey, Integer> errorCount = new HashMap<>();
 
@@ -62,5 +63,9 @@ public class Aggregator {
         }
         return totalErrorsPerMinute;
     }
+    public int getTotalLines() { return totalLines; }
+    public int getInvalidLines() { return invalidLines; }
+    public void setTotalLines(int totalLines) { this.totalLines = totalLines; }
+    public void setInvalidLines(int invalidLines) { this.invalidLines = invalidLines; }
 }
 
