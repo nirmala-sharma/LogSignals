@@ -50,7 +50,7 @@ public class LogAnalysisService {
     // PUBLIC — orchestrates the full pipeline
     // ─────────────────────────────────────────
     public LogAnalysisResponseDTO runAnalysis(MultipartFile file) {
-        try {
+
             validateFile(file);
 
             Aggregator aggregator = context.getBean(Aggregator.class);
@@ -70,15 +70,6 @@ public class LogAnalysisService {
                     anomalyMap,
                     incidents
             );
-
-        } catch (EmptyLogFileException e) {
-            log.error("Empty file error: {}", e.getMessage());
-            return buildFailureResponse(e.getMessage());
-
-        } catch (Exception e) {
-            log.error("Analysis failed: {}", e.getMessage(), e);
-            return buildFailureResponse("Analysis failed: " + e.getMessage());
-        }
     }
 
     // ─────────────────────────────────────────
