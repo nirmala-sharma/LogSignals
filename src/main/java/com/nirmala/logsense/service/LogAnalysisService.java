@@ -32,44 +32,77 @@ public class LogAnalysisService {
     private final IncidentCorrelator correlator;
     private final IncidentExplainer explainer;
     private final AnomalyDetectionConfig config;
-
+    private final LogPersistenceService logPersistenceService;
     public LogAnalysisService(
             ApplicationContext context,
             AnomalyDetector detector,
             IncidentCorrelator correlator,
             IncidentExplainer explainer,
-            AnomalyDetectionConfig config) {
+            AnomalyDetectionConfig config,
+            LogPersistenceService logPersistenceService) {
         this.context = context;
         this.detector = detector;
         this.correlator = correlator;
         this.explainer = explainer;
         this.config = config;
+        this.logPersistenceService = logPersistenceService;
     }
+
 
     // ─────────────────────────────────────────
     // PUBLIC — orchestrates the full pipeline
     // ─────────────────────────────────────────
-    public LogAnalysisResponseDTO runAnalysis(MultipartFile file) {
+//    public LogAnalysisResponseDTO runAnalysis(MultipartFile file) {
+//
+//            validateFile(file);
+//
+//            Aggregator aggregator = context.getBean(Aggregator.class);
+//            parseAndAggregate(file, aggregator);
+//
+//            Map<String, Map<String, List<Instant>>> anomalyMap =
+//                    detectAnomalies(aggregator);
+//
+//            Map<String, Map<String, List<Incident>>> incidents =
+//                    correlateIncidents(anomalyMap);
+//
+//            explainIncidents(incidents, aggregator);
+//
+//            return buildSuccessResponse(
+//                    aggregator.getTotalLines(),
+//                    aggregator.getInvalidLines(),
+//                    anomalyMap,
+//                    incidents
+//            );
+//    }
 
-            validateFile(file);
+    public LogAnalysisResponseDTO runAnalysis(Long applicationId, MultipartFile file) {
 
-            Aggregator aggregator = context.getBean(Aggregator.class);
-            parseAndAggregate(file, aggregator);
+        validateFile(file);
 
-            Map<String, Map<String, List<Instant>>> anomalyMap =
-                    detectAnomalies(aggregator);
+        Aggregator aggregator = context.getBean(Aggregator.class);
+        parseAndAggregate(file, aggregator);
 
-            Map<String, Map<String, List<Incident>>> incidents =
-                    correlateIncidents(anomalyMap);
+        Map<String, Map<String, List<Instant>>> anomalyMap =
+                detectAnomalies(aggregator);
 
-            explainIncidents(incidents, aggregator);
+        Map<String, Map<String, List<Incident>>> incidents =
+                correlateIncidents(anomalyMap);
 
-            return buildSuccessResponse(
-                    aggregator.getTotalLines(),
-                    aggregator.getInvalidLines(),
-                    anomalyMap,
-                    incidents
-            );
+        explainIncidents(incidents, aggregator);
+
+        LogAnalysisResponseDTO response = buildSuccessResponse(
+                aggregator.getTotalLines(),
+                aggregator.getInvalidLines(),
+                anomalyMap,
+                incidents
+        );
+
+        logPersistenceService.saveAnalysisSummaryAndAnomalies(
+                applicationId,
+                response
+        );
+
+        return response;
     }
 
     // ─────────────────────────────────────────

@@ -9,3 +9,5 @@ public class LogSenseApplication {
         SpringApplication.run(LogSenseApplication.class, args);
     }
 }
+
+
