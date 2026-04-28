@@ -1,0 +1,13 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="LogsenseApplication" type="Application" factoryName="Application">
+    <envs>
+      <env name="MAIL_USERNAME" value="niru0102sharma@gmail.com" />
+      <env name="MAIL_PASSWORD" value="qnrf oasa osbk ykxw  " />
+    </envs>
+    <option name="MAIN_CLASS_NAME" value="com.nirmala.logsense.LogSenseApplication" />
+    <module name="LogMonitoringAndAnomalyDetectionSystem" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

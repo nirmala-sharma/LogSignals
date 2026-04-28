@@ -33,47 +33,29 @@ public class LogAnalysisService {
     private final IncidentExplainer explainer;
     private final AnomalyDetectionConfig config;
     private final LogPersistenceService logPersistenceService;
+    private final AlertNotificationService alertNotificationService;
+
     public LogAnalysisService(
             ApplicationContext context,
             AnomalyDetector detector,
             IncidentCorrelator correlator,
             IncidentExplainer explainer,
             AnomalyDetectionConfig config,
-            LogPersistenceService logPersistenceService) {
+            LogPersistenceService logPersistenceService,
+            AlertNotificationService alertNotificationService) {
         this.context = context;
         this.detector = detector;
         this.correlator = correlator;
         this.explainer = explainer;
         this.config = config;
         this.logPersistenceService = logPersistenceService;
+        this.alertNotificationService = alertNotificationService;
     }
 
 
     // ─────────────────────────────────────────
     // PUBLIC — orchestrates the full pipeline
     // ─────────────────────────────────────────
-//    public LogAnalysisResponseDTO runAnalysis(MultipartFile file) {
-//
-//            validateFile(file);
-//
-//            Aggregator aggregator = context.getBean(Aggregator.class);
-//            parseAndAggregate(file, aggregator);
-//
-//            Map<String, Map<String, List<Instant>>> anomalyMap =
-//                    detectAnomalies(aggregator);
-//
-//            Map<String, Map<String, List<Incident>>> incidents =
-//                    correlateIncidents(anomalyMap);
-//
-//            explainIncidents(incidents, aggregator);
-//
-//            return buildSuccessResponse(
-//                    aggregator.getTotalLines(),
-//                    aggregator.getInvalidLines(),
-//                    anomalyMap,
-//                    incidents
-//            );
-//    }
 
     public LogAnalysisResponseDTO runAnalysis(Long applicationId, MultipartFile file) {
 
@@ -101,7 +83,7 @@ public class LogAnalysisService {
                 applicationId,
                 response
         );
-
+        alertNotificationService.sendAlertsIfNeeded(applicationId, anomalyMap);
         return response;
     }
 
