@@ -27,54 +27,22 @@ public class LiveLogIngestionService {
     private final IncidentExplainer explainer;
     private final AnomalyDetectionConfig config;
     private final LogPersistenceService logPersistenceService;
+    private final AlertNotificationService alertNotificationService;
 
     public LiveLogIngestionService(
             AnomalyDetector detector,
             IncidentCorrelator correlator,
             IncidentExplainer explainer,
             AnomalyDetectionConfig config,
-            LogPersistenceService logPersistenceService) {
+            LogPersistenceService logPersistenceService,
+            AlertNotificationService alertNotificationService) {
         this.detector = detector;
         this.correlator = correlator;
         this.explainer = explainer;
         this.config = config;
         this.logPersistenceService = logPersistenceService;
-
+        this.alertNotificationService = alertNotificationService;
     }
-
-//    public synchronized LiveIngestResponseDTO ingest(LiveIngestRequestDTO request) {
-//        LogModel logModel = request.toLogModel();
-//        Instant minuteBucket = logModel.getTimestamp().truncatedTo(ChronoUnit.MINUTES);
-//
-//        liveAggregator.add(logModel);
-//        liveAggregator.setTotalLines(liveAggregator.getTotalLines() + 1);
-//
-//        Map<String, Map<String, List<Instant>>> anomalies =
-//                detector.detect(liveAggregator.getErrorCount(), config);
-//        Map<String, Map<String, List<Incident>>> incidents =
-//                correlator.group(anomalies);
-//
-//        explainIncidents(incidents);
-//
-//        boolean anomalyDetected = isAnomalyForCurrentLog(
-//                anomalies,
-//                logModel.getService(),
-//                logModel.getErrorCode(),
-//                minuteBucket
-//        );
-//
-//        log.info("Live log ingested. service={}, errorCode={}, minute={}, anomalyDetected={}",
-//                logModel.getService(), logModel.getErrorCode(), minuteBucket, anomalyDetected);
-//
-//        return buildResponse(
-//                liveAggregator.getTotalLines(),
-//                minuteBucket,
-//                anomalyDetected,
-//                anomalies,
-//                incidents
-//        );
-//    }
-
     public synchronized LiveIngestResponseDTO ingest(Long applicationId, LiveIngestRequestDTO request) {
         LogModel logModel = request.toLogModel();
         Instant minuteBucket = logModel.getTimestamp().truncatedTo(ChronoUnit.MINUTES);
@@ -110,7 +78,7 @@ public class LiveLogIngestionService {
                 logModel,
                 anomalies
         );
-
+        alertNotificationService.sendAlertsIfNeeded(applicationId, anomalies);
         log.info("Live log ingested. service={}, errorCode={}, minute={}, anomalyDetected={}",
                 logModel.getService(), logModel.getErrorCode(), minuteBucket, anomalyDetected);
 

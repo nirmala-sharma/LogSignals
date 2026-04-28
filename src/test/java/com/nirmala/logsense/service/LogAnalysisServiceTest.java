@@ -29,12 +29,13 @@ class LogAnalysisServiceTest {
     @Mock private AnomalyDetectionConfig config;
     @Mock private Aggregator aggregator;
     @Mock private  LogPersistenceService logPersistenceService;
-    private LogAnalysisService service;
+    @Mock private LogAnalysisService service;
+    @Mock private AlertNotificationService alertNotificationService;
 
     @BeforeEach
     void setUp() {
         service = new LogAnalysisService(
-                context, detector, correlator, explainer, config,logPersistenceService
+                context, detector, correlator, explainer, config,logPersistenceService,alertNotificationService
         );
 
     }
