@@ -1,5 +1,6 @@
 package com.nirmala.logsense.config;
 
+import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -8,6 +9,7 @@ import org.springframework.context.annotation.Configuration;
 
 @Getter
 @Setter
+@Data
 @NoArgsConstructor
 @Configuration  // tells Spring this is a config class
 public class AnomalyDetectionConfig {

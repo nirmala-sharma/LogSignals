@@ -28,6 +28,9 @@ public class Aggregator {
         if (log == null) {
             return;
         }
+        if (!shouldTrack(log)) {
+            return;
+        }
         Instant minuteBucket = log.getTimestamp().truncatedTo(ChronoUnit.MINUTES);
 
         AggregationKey key = new AggregationKey(
@@ -42,7 +45,15 @@ public class Aggregator {
         // store logs per key
         errorLogs.computeIfAbsent(key, k -> new ArrayList<>()).add(log);
     }
+    private boolean shouldTrack(LogModel log) {
+        if (log.getLevel() == null) {
+            return false;
+        }
 
+        String level = log.getLevel().trim().toUpperCase();
+
+        return "ERROR".equals(level);
+    }
 
     public Map<AggregationKey, Integer> getErrorCount() {
         return errorCount;
