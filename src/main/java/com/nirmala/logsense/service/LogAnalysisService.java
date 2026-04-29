@@ -4,6 +4,7 @@ import com.nirmala.logsense.aggregator.Aggregator;
 import com.nirmala.logsense.config.AnomalyDetectionConfig;
 import com.nirmala.logsense.correlator.IncidentCorrelator;
 import com.nirmala.logsense.detector.AnomalyDetector;
+import com.nirmala.logsense.dto.IncidentResponseDTO;
 import com.nirmala.logsense.dto.LogAnalysisResponseDTO;
 import com.nirmala.logsense.exception.EmptyLogFileException;
 import com.nirmala.logsense.explainer.IncidentExplainer;
@@ -20,6 +21,8 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -187,13 +190,37 @@ public class LogAnalysisService {
             Map<String, Map<String, List<Instant>>> anomalyMap,
             Map<String, Map<String, List<Incident>>> incidents) {
 
+        Map<String, Map<String, List<IncidentResponseDTO>>> responseIncidents = new HashMap<>();
+
+        for (Map.Entry<String, Map<String, List<Incident>>> serviceEntry : incidents.entrySet()) {
+            Map<String, List<IncidentResponseDTO>> errorMap = new HashMap<>();
+
+            for (Map.Entry<String, List<Incident>> errorEntry : serviceEntry.getValue().entrySet()) {
+                List<IncidentResponseDTO> incidentResponses = new ArrayList<>();
+
+                for (Incident incident : errorEntry.getValue()) {
+                    incidentResponses.add(
+                            new IncidentResponseDTO(
+                                    incident.getStart(),
+                                    incident.getExplanation()
+                            )
+                    );
+                }
+
+                errorMap.put(errorEntry.getKey(), incidentResponses);
+            }
+
+            responseIncidents.put(serviceEntry.getKey(), errorMap);
+        }
+
+
         LogAnalysisResponseDTO response = new LogAnalysisResponseDTO();
-        response.setStatus("success");
+        response.setStatus("SUCCESS");
         response.setMessage("Analysis completed successfully");
         response.setTotalLines(totalLines);
         response.setInvalidLines(invalidLines);
         response.setAnomalies(anomalyMap);
-        response.setIncidents(incidents);
+        response.setIncidents(responseIncidents);
 
         log.info("Analysis completed successfully. totalLines={}, invalidLines={}",
                 totalLines, invalidLines);
@@ -202,7 +229,7 @@ public class LogAnalysisService {
 
     private LogAnalysisResponseDTO buildFailureResponse(String message) {
         LogAnalysisResponseDTO response = new LogAnalysisResponseDTO();
-        response.setStatus("failed");
+        response.setStatus("FAILED");
         response.setMessage(message);
         return response;
     }

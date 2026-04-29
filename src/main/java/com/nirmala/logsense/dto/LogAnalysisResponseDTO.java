@@ -15,7 +15,7 @@ public class LogAnalysisResponseDTO {
     private int totalLines;
     private int invalidLines;
     private Map<String, Map<String, List<Instant>>> anomalies;
-    private Map<String, Map<String, List<Incident>>> incidents;
+    private Map<String, Map<String, List<IncidentResponseDTO>>> incidents;
 
     public LogAnalysisResponseDTO() {
     }

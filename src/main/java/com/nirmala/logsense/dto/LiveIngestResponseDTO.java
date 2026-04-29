@@ -16,5 +16,5 @@ public class LiveIngestResponseDTO {
     private boolean anomalyDetected;
     private Instant ingestedMinute;
     private Map<String, Map<String, List<Instant>>> anomalies;
-    private Map<String, Map<String, List<Incident>>> incidents;
+    private Map<String, Map<String, List<IncidentResponseDTO>>> incidents;
 }

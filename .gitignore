@@ -4,6 +4,7 @@ target/
 ### IntelliJ IDEA ###
 .idea/
 #*.iml
+.run/
 
 ### VS Code ###
 .vscode/
@@ -30,3 +31,5 @@ logs/
 
 ### macOS ###
 .DS_Store
+
+

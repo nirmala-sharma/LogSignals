@@ -4,6 +4,7 @@ import com.nirmala.logsense.aggregator.Aggregator;
 import com.nirmala.logsense.config.AnomalyDetectionConfig;
 import com.nirmala.logsense.correlator.IncidentCorrelator;
 import com.nirmala.logsense.detector.AnomalyDetector;
+import com.nirmala.logsense.dto.IncidentResponseDTO;
 import com.nirmala.logsense.dto.LiveIngestRequestDTO;
 import com.nirmala.logsense.dto.LiveIngestResponseDTO;
 import com.nirmala.logsense.explainer.IncidentExplainer;
@@ -14,6 +15,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -130,6 +133,29 @@ public class LiveLogIngestionService {
             Map<String, Map<String, List<Instant>>> anomalies,
             Map<String, Map<String, List<Incident>>> incidents) {
 
+        Map<String, Map<String, List<IncidentResponseDTO>>> responseIncidents = new HashMap<>();
+
+        for (Map.Entry<String, Map<String, List<Incident>>> serviceEntry : incidents.entrySet()) {
+            Map<String, List<IncidentResponseDTO>> errorMap = new HashMap<>();
+
+            for (Map.Entry<String, List<Incident>> errorEntry : serviceEntry.getValue().entrySet()) {
+                List<IncidentResponseDTO> incidentResponses = new ArrayList<>();
+
+                for (Incident incident : errorEntry.getValue()) {
+                    incidentResponses.add(
+                            new IncidentResponseDTO(
+                                    incident.getStart(),
+                                    incident.getExplanation()
+                            )
+                    );
+                }
+
+                errorMap.put(errorEntry.getKey(), incidentResponses);
+            }
+
+            responseIncidents.put(serviceEntry.getKey(), errorMap);
+        }
+
         LiveIngestResponseDTO response = new LiveIngestResponseDTO();
         response.setStatus("success");
         response.setMessage("Log ingested successfully");
@@ -137,7 +163,7 @@ public class LiveLogIngestionService {
         response.setIngestedMinute(ingestedMinute);
         response.setAnomalyDetected(anomalyDetected);
         response.setAnomalies(anomalies);
-        response.setIncidents(incidents);
+        response.setIncidents(responseIncidents);
         return response;
     }
 }
