@@ -4,6 +4,7 @@ import com.nirmala.logsense.dto.*;
 import com.nirmala.logsense.entity.Application;
 import com.nirmala.logsense.entity.ApplicationApiKey;
 import com.nirmala.logsense.entity.User;
+import com.nirmala.logsense.exception.AuthenticationException;
 import com.nirmala.logsense.repository.AppUserRepository;
 import com.nirmala.logsense.repository.ApplicationApiKeyRepository;
 import com.nirmala.logsense.repository.ApplicationRepository;
@@ -75,8 +76,7 @@ public class AuthService {
                 .orElseThrow(() -> new RuntimeException("Invalid email or password"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new RuntimeException("Invalid email or password");
-        }
+            throw new AuthenticationException("Invalid email or password");        }
 
         return new LoginResponseDTO(
                 user.getUserId(),
