@@ -1,0 +1,7 @@
+{
+  "timestamp": "2026-02-04T10:05:00Z",
+  "level": "ERROR",
+  "service": "DBService",
+  "errorCode": "DB_TIMEOUT",
+  "message": "Database timeout"
+}
