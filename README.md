@@ -218,6 +218,7 @@ Body:
 }
 ```
 ## Project Structure
+```text
 src/main/java/com/nirmala/logsense
 ├── config
 ├── controller
@@ -227,38 +228,38 @@ src/main/java/com/nirmala/logsense
 ├── repository
 ├── service
 └── util
-
+```
 ---
 
-## How to Run
+# How to Run
 
-# Prerequisites
-- Java 17+
+## Requirements
+- Java 25
 - Maven
 - PostgreSQL
-- IntelliJ IDEA
-- pgAdmin or psql
-- Gmail App Password for email alerts
+
+## Optional Tools
+- IntelliJ IDEA (or any IDE)
+- pgAdmin / psql (for database management)
 
 # Steps
 1. Clone the repository
 ``` bash
-git clone <your-repo-url>
-cd <your-project-folder>
+git clone https://github.com/nirmala-sharma/LogSignals.git
 ```
 2. Create database
 ``` sql
-   CREATE DATABASE log_monitoring;
+CREATE DATABASE log_monitoring;
 ```
 3. Run the SQL query from
-   ``` text
-   database/schema.sql
-   ```
+``` text
+database/schema.sql
+```
 4. Configure application.properties
-   ``` properties
-   spring.datasource.url=jdbc:postgresql://localhost:5432/log_monitoring
-spring.datasource.username=your_db_username
-spring.datasource.password=your_db_password
+``` properties
+ spring.datasource.url=jdbc:postgresql://localhost:5432/log_monitoring
+ spring.datasource.username=your_db_username
+ spring.datasource.password=your_db_password
 
 spring.datasource.driver-class-name=org.postgresql.Driver
 
