@@ -38,31 +38,27 @@ This project demonstrates practical backend engineering concepts including authe
 - Spring Boot
 - Spring Data JPA
 - PostgreSQL
+- Maven
 - REST APIs
+- Swagger / OpenAPI
+- JUnit
 - Lombok
 - JavaMailSender
-- Maven
 
+  
 ---
 
 ## System Architecture
 
 ```mermaid
 flowchart LR
-    U["User"] --> R["Register / Login API"]
-    R --> DB["PostgreSQL"]
-
-    C["Client Application"] -->|X-API-Key + Logs| A["Log Ingestion API"]
-    A --> V["API Key Validation"]
-    V --> DB
-
-    A --> P["Parsing & Analysis"]
-    P --> D["Anomaly Detection"]
-    D --> S["Persistence Layer"]
-    S --> DB
-
-    D --> E["Email Alert Service"]
-    E --> M["Email Inbox"]
+    U[User] --> R[Register / Login]
+    U --> C[Owns Client Application]
+    R --> K[Generate API Key]
+    C -->|Uses API Key| L[Send Logs]
+    L --> A[Analyze Logs]
+    A --> D[PostgreSQL]
+    A --> E[Email Alert]
 ```
 ---
 
@@ -79,28 +75,6 @@ sequenceDiagram
     API->>DB: Create application
     API->>DB: Save hashed API key
     API-->>U: userId, applicationId, raw API key
-
-```
-
----
-
-## Log Ingestion Flow
-
-```mermaid
-sequenceDiagram
-    participant C as Client Application
-    participant API as Log API
-    participant DB as PostgreSQL
-    participant MAIL as Email Service
-
-    C->>API: Send logs + X-API-Key
-    API->>DB: Validate API key
-    API->>API: Parse logs
-    API->>API: Detect anomalies
-    API->>DB: Save analysis run
-    API->>DB: Save logs/anomalies
-    API->>MAIL: Send alert if anomaly detected
-    API-->>C: Analysis response
 
 ```
 
@@ -179,7 +153,6 @@ erDiagram
     }
 
 ```
-
 ---
 
 ## API Endpoints
@@ -261,18 +234,18 @@ database/schema.sql
  spring.datasource.username=your_db_username
  spring.datasource.password=your_db_password
 
-spring.datasource.driver-class-name=org.postgresql.Driver
+ spring.datasource.driver-class-name=org.postgresql.Driver
 
-spring.jpa.hibernate.ddl-auto=validate
-spring.jpa.show-sql=true
-spring.jpa.properties.hibernate.format_sql=true
+ spring.jpa.hibernate.ddl-auto=validate
+ spring.jpa.show-sql=true
+ spring.jpa.properties.hibernate.format_sql=true
 
-spring.mail.host=smtp.gmail.com
-spring.mail.port=587
-spring.mail.username=${MAIL_USERNAME}
-spring.mail.password=${MAIL_PASSWORD}
-spring.mail.properties.mail.smtp.auth=true
-spring.mail.properties.mail.smtp.starttls.enable=true
+ spring.mail.host=smtp.gmail.com
+ spring.mail.port=587
+ spring.mail.username=${MAIL_USERNAME}
+ spring.mail.password=${MAIL_PASSWORD}
+ spring.mail.properties.mail.smtp.auth=true
+ spring.mail.properties.mail.smtp.starttls.enable=true
 ```
 5. Set IntelliJ environment variables for the mail
 ``` text
@@ -296,6 +269,54 @@ MAIL_USERNAME=your_email@gmail.com;MAIL_PASSWORD=your_google_app_password
 
 7. Check email inbox
 
+---
+## Learning Opportunities
+
+This project can serve as a practical learning resource for beginner backend developers. By exploring or contributing to LogSignals, contributors can gain hands-on experience with:
+
+- layered Spring Boot backend architecture
+- REST API design and request/response handling
+- JPA entity mapping and database persistence
+- relational schema design with PostgreSQL
+- API key based application authentication
+- dependency injection in Spring Boot
+- global exception handling
+- unit testing for core backend logic
+- log parsing, aggregation, and anomaly detection workflows
+- email integration and environment-based configuration
+
+It is a good project for understanding how multiple backend components work together in a real-world monitoring workflow.
+
+## Contribution Ideas
+
+Contributions are welcome in both beginner-friendly and advanced areas.
+
+### Beginner-Friendly
+
+- improve README and project documentation
+- add more unit tests
+- improve validation and error messages
+- clean up naming and code readability
+- add more sample log datasets
+- improve Swagger/OpenAPI documentation
+
+### Intermediate
+
+- add history retrieval APIs for logs and anomalies
+- improve severity classification logic
+- add better filtering and search support
+- enhance email alert formatting
+- add alert throttling to avoid duplicate notifications
+
+### Advanced
+
+- add JWT-based authentication
+- support multiple alert recipients per application
+- make anomaly thresholds configurable per service
+- add a dashboard or frontend UI
+- containerize the project using Docker
+- add role-based access control
+- integrate asynchronous alert processing
 
 
    
