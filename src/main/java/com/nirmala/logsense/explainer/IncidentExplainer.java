@@ -33,16 +33,25 @@ public class IncidentExplainer {
             }
             t = t.plusSeconds(60);
         }
-
-        String explanation = buildExplanation(service, errorCode, incident, totalErrors);
+        String severity = determineSeverity(totalErrors);
+        String explanation = buildExplanation(service, errorCode, incident, totalErrors, severity);
         incident.setExplanation(explanation);
         log.info(explanation);
         log.info("----------------------------------");
     }
 
     private String buildExplanation(String service, String errorCode,
-                                    Incident incident, int totalErrors) {
-        return service + " had " + totalErrors + " " + errorCode +
+                                    Incident incident, int totalErrors, String severity) {
+        return severity + ": " + service + " had " + totalErrors + " " + errorCode +
                 " errors at " + incident.getStart() + ".";
+    }
+    private String determineSeverity(int errorCount) {
+        if (errorCount >= 5) {
+            return "CRITICAL";
+        }
+        if (errorCount >= 3) {
+            return "HIGH";
+        }
+        return "MEDIUM";
     }
 }

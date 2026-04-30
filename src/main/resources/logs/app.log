@@ -26,6 +26,7 @@
 {"timestamp":"2026-02-04T10:09:01Z","level":"ERROR","service":"AuthService","errorCode":"TOKEN_SERVICE_DOWN","message":"Token service unavailable"}
 {"timestamp":"2026-02-04T10:09:05Z","level":"ERROR","service":"AuthService","errorCode":"TOKEN_SERVICE_DOWN","message":"Token service unavailable"}
 {"timestamp":"2026-02-04T10:09:10Z","level":"ERROR","service":"AuthService","errorCode":"TOKEN_SERVICE_DOWN","message":"Token service unavailable"}
+{"timestamp":"2026-02-04T10:09:30Z","level":"ERROR","service":"AuthService","errorCode":"TOKEN_SERVICE_DOWN","message":"Token service unavailable"}
 {"timestamp":"2026-02-04T10:09:15Z","level":"ERROR","service":"AuthService","errorCode":"TOKEN_SERVICE_DOWN","message":"Token service unavailable"}
 {"timestamp":"2026-02-04T10:09:20Z","level":"ERROR","service":"AuthService","errorCode":"TOKEN_SERVICE_DOWN","message":"Token service unavailable"}
 {"timestamp":"2026-02-04T10:08:01Z","level":"ERROR","service":"Gateway","errorCode":"HTTP_500","message":"Internal server error"}

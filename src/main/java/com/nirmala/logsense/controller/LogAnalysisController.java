@@ -3,8 +3,6 @@ package com.nirmala.logsense.controller;
 import com.nirmala.logsense.dto.LiveIngestRequestDTO;
 import com.nirmala.logsense.dto.LiveIngestResponseDTO;
 import com.nirmala.logsense.dto.LogAnalysisResponseDTO;
-import com.nirmala.logsense.dto.SaveAnalysisRequest;
-import com.nirmala.logsense.entity.LogAnalysisRun;
 import com.nirmala.logsense.service.ApiKeyService;
 import com.nirmala.logsense.service.LogAnalysisService;
 import com.nirmala.logsense.service.LiveLogIngestionService;
@@ -49,18 +47,5 @@ public class LogAnalysisController {
     ) {
         Long applicationId = apiKeyService.getApplicationIdFromApiKey(apiKey);
         return liveLogIngestionService.ingest(applicationId, request);
-    }
-    @PostMapping("/save-analysis")
-    public LogAnalysisRun saveAnalysis(
-            @RequestHeader("X-API-Key") String apiKey,
-            @RequestBody SaveAnalysisRequest request
-    ) {
-        Long applicationId = apiKeyService.getApplicationIdFromApiKey(apiKey);
-
-        return logPersistenceService.saveAnalysisResult(
-                applicationId,
-                request.getParsedLogs(),
-                request.getResponse()
-        );
     }
 }

@@ -16,9 +16,7 @@ public class ApplicationController {
     }
 
     @PostMapping
-    public CreateApplicationResponseDTO createApplication(
-            @RequestBody CreateApplicationRequestDTO request
-    ) {
+    public CreateApplicationResponseDTO createApplication( @RequestBody CreateApplicationRequestDTO request) {
         return applicationService.createApplication(request);
     }
 }
