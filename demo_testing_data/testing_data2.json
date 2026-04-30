@@ -1,0 +1,8 @@
+{
+  "timestamp": "2026-02-04T10:05:00Z",
+  "level": "ERROR",
+  "service": "PaymentService",
+  "errorCode": "PAYMENT_FAILED",
+  "message": "Payment failed for order 100"
+}
+

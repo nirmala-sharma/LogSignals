@@ -81,6 +81,15 @@ public class GlobalExceptionHandler {
                         message
                 ));
     }
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErrorResponseDTO> handleAuthenticationException(AuthenticationException ex) {
+        ErrorResponseDTO error = new ErrorResponseDTO(
+                "error",
+                "AUTH_FAILED",
+                ex.getMessage()
+        );
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
 
     // catches everything else — fallback
     @ExceptionHandler(Exception.class)
