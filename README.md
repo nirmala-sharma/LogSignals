@@ -177,7 +177,7 @@ erDiagram
 ```
 # Live Log Ingestion
 Header:
-```json
+```text
 X-API-Key: <your-api-key>
 ```
 Body:
@@ -270,6 +270,20 @@ MAIL_USERNAME=your_email@gmail.com;MAIL_PASSWORD=your_google_app_password
 7. Check email inbox
 
 ---
+## Demo Screenshots
+### Swagger UI
+![Swagger UI](docs/images/swagger-ui.png)
+
+### Register API Response
+![Register Response](docs/images/register-api.png)
+
+### Live Log Ingestion Response
+![Live Ingestion Response](docs/images/live-ingest-response.png)
+
+### Email Alert
+![Email Alert](docs/images/email-alert.png)
+
+
 ## Learning Opportunities
 
 This project can serve as a practical learning resource for beginner backend developers. By exploring or contributing to LogSignals, contributors can gain hands-on experience with:
