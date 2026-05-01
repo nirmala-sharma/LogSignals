@@ -154,6 +154,30 @@ erDiagram
 
 ```
 ---
+## Anomaly Detection Logic
+
+LogSignals uses a rolling threshold based anomaly detection approach rather than a fixed error count rule.
+
+The system groups logs by:
+- service
+- error code
+- minute
+
+It then counts how many times the same error occurs in each minute. To decide whether the current count is anomalous, the system compares it with recent previous counts for the same service and error code.
+
+A dynamic threshold is calculated using the recent mean and standard deviation:
+
+`threshold = mean + (k × standard deviation)`
+
+In the current implementation:
+- `k = 2`
+- minimum standard deviation = `1`
+
+This means the system does not treat every repeated error as anomalous. Instead, it checks whether the current error spike is significantly higher than the recent normal pattern.
+
+For example, if a service had 2 repeated errors in an earlier minute and later shows 4 repeated errors, the later minute may be flagged as anomalous if it crosses the calculated rolling threshold.
+
+---
 
 ## API Endpoints
 1.Authentication
