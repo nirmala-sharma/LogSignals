@@ -271,17 +271,24 @@ MAIL_USERNAME=your_email@gmail.com;MAIL_PASSWORD=your_google_app_password
 
 ---
 ## Demo Screenshots
+
 ### Swagger UI
-![Swagger UI](docs/images/swagger-ui.png)
+
+![Swagger UI](docs/images/swagger_ui.png)
+
 
 ### Register API Response
-![Register Response](docs/images/register-api.png)
+
+![Register Response](docs/images/register_api.png)
+
 
 ### Live Log Ingestion Response
-![Live Ingestion Response](docs/images/live-ingest-response.png)
+
+![Live Ingestion Response](docs/images/live_ingest_response.png)
+
 
 ### Email Alert
-![Email Alert](docs/images/email-alert.png)
+![Email Alert](docs/images/email_alert.png)
 
 
 ## Learning Opportunities
