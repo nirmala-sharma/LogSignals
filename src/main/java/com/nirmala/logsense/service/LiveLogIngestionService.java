@@ -8,29 +8,52 @@ import com.nirmala.logsense.dto.IncidentResponseDTO;
 import com.nirmala.logsense.dto.LiveIngestRequestDTO;
 import com.nirmala.logsense.dto.LiveIngestResponseDTO;
 import com.nirmala.logsense.explainer.IncidentExplainer;
+import com.nirmala.logsense.model.AggregationKey;
 import com.nirmala.logsense.model.Incident;
 import com.nirmala.logsense.model.LogModel;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Handles live (one log at a time) ingestion.
+ *
+ * <p>Each application gets its own isolated in-memory state, so logs from one
+ * tenant can never influence another tenant's detection or trigger alerts to
+ * another tenant's owner. State is bounded: minute buckets older than the
+ * retention window are evicted, and every anomaly (service + errorCode + minute)
+ * is persisted and alerted exactly once.</p>
+ */
 @Slf4j
 @Service
 public class LiveLogIngestionService {
 
-    private final Aggregator liveAggregator = new Aggregator();
+    /** Per-application live state. Access is guarded by synchronizing on the instance. */
+    private static final class AppLiveState {
+        private final Aggregator aggregator = new Aggregator();
+        private final Set<AggregationKey> alreadyReported = new HashSet<>();
+        private Instant newestMinute;
+    }
+
+    private final Map<Long, AppLiveState> stateByApplication = new ConcurrentHashMap<>();
+
     private final AnomalyDetector detector;
     private final IncidentCorrelator correlator;
     private final IncidentExplainer explainer;
     private final AnomalyDetectionConfig config;
     private final LogPersistenceService logPersistenceService;
     private final AlertNotificationService alertNotificationService;
+    private final long retentionMinutes;
 
     public LiveLogIngestionService(
             AnomalyDetector detector,
@@ -38,58 +61,99 @@ public class LiveLogIngestionService {
             IncidentExplainer explainer,
             AnomalyDetectionConfig config,
             LogPersistenceService logPersistenceService,
-            AlertNotificationService alertNotificationService) {
+            AlertNotificationService alertNotificationService,
+            @Value("${logsense.live.retentionMinutes:60}") long retentionMinutes) {
         this.detector = detector;
         this.correlator = correlator;
         this.explainer = explainer;
         this.config = config;
         this.logPersistenceService = logPersistenceService;
         this.alertNotificationService = alertNotificationService;
+        this.retentionMinutes = retentionMinutes;
     }
-    public synchronized LiveIngestResponseDTO ingest(Long applicationId, LiveIngestRequestDTO request) {
+
+    public LiveIngestResponseDTO ingest(Long applicationId, LiveIngestRequestDTO request) {
+        AppLiveState state = stateByApplication.computeIfAbsent(applicationId, id -> new AppLiveState());
+
         LogModel logModel = request.toLogModel();
         Instant minuteBucket = logModel.getTimestamp().truncatedTo(ChronoUnit.MINUTES);
 
-        liveAggregator.add(logModel);
-        liveAggregator.setTotalLines(liveAggregator.getTotalLines() + 1);
+        LiveIngestResponseDTO response;
+        Map<String, Map<String, List<Instant>>> newAnomalies;
 
-        Map<String, Map<String, List<Instant>>> anomalies =
-                detector.detect(liveAggregator.getErrorCount(), config);
+        // Lock only this application's state: different applications ingest in parallel.
+        synchronized (state) {
+            Aggregator aggregator = state.aggregator;
+            aggregator.add(logModel);
+            aggregator.setTotalLines(aggregator.getTotalLines() + 1);
 
-        Map<String, Map<String, List<Incident>>> incidents =
-                correlator.group(anomalies);
+            evictExpired(state, minuteBucket);
 
-        explainIncidents(incidents);
+            Map<String, Map<String, List<Instant>>> anomalies =
+                    detector.detect(aggregator.getErrorCount(), config);
 
-        boolean anomalyDetected = isAnomalyForCurrentLog(
-                anomalies,
-                logModel.getService(),
-                logModel.getErrorCode(),
-                minuteBucket
-        );
+            Map<String, Map<String, List<Incident>>> incidents = correlator.group(anomalies);
+            explainIncidents(incidents, aggregator);
 
-        LiveIngestResponseDTO response = buildResponse(
-                liveAggregator.getTotalLines(),
-                minuteBucket,
-                anomalyDetected,
-                anomalies,
-                incidents
-        );
+            // Only anomalies we have not already stored/alerted for this application.
+            newAnomalies = extractNewAnomalies(anomalies, state.alreadyReported);
 
-        logPersistenceService.saveLiveIngestResult(
-                applicationId,
-                logModel,
-                anomalies
-        );
-        alertNotificationService.sendAlertsIfNeeded(applicationId, anomalies);
-        log.info("Live log ingested. service={}, errorCode={}, minute={}, anomalyDetected={}",
-                logModel.getService(), logModel.getErrorCode(), minuteBucket, anomalyDetected);
+            boolean anomalyDetected = isAnomalyForCurrentLog(
+                    anomalies, logModel.getService(), logModel.getErrorCode(), minuteBucket);
+
+            response = buildResponse(
+                    aggregator.getTotalLines(), minuteBucket, anomalyDetected, anomalies, incidents);
+
+            logPersistenceService.saveLiveIngestResult(applicationId, logModel, newAnomalies);
+
+            log.info("Live log ingested. applicationId={}, service={}, errorCode={}, minute={}, anomalyDetected={}, newAnomalies={}",
+                    applicationId, logModel.getService(), logModel.getErrorCode(),
+                    minuteBucket, anomalyDetected, !newAnomalies.isEmpty());
+        }
+
+        // Send email outside the lock so a slow mail server does not block this app's stream.
+        alertNotificationService.sendAlertsIfNeeded(applicationId, newAnomalies);
 
         return response;
     }
 
+    /** Keeps only the last {@code retentionMinutes} of buckets (relative to the newest log seen). */
+    private void evictExpired(AppLiveState state, Instant minuteBucket) {
+        if (state.newestMinute == null || minuteBucket.isAfter(state.newestMinute)) {
+            state.newestMinute = minuteBucket;
+        }
+        Instant cutoff = state.newestMinute.minus(retentionMinutes, ChronoUnit.MINUTES);
+        state.aggregator.evictOlderThan(cutoff);
+        state.alreadyReported.removeIf(key -> key.getMinuteBucket().isBefore(cutoff));
+    }
 
-    private void explainIncidents(Map<String, Map<String, List<Incident>>> incidents) {
+    /**
+     * Returns the anomalies not reported before and records them as reported.
+     */
+    private Map<String, Map<String, List<Instant>>> extractNewAnomalies(
+            Map<String, Map<String, List<Instant>>> anomalies,
+            Set<AggregationKey> alreadyReported) {
+
+        Map<String, Map<String, List<Instant>>> fresh = new HashMap<>();
+
+        for (Map.Entry<String, Map<String, List<Instant>>> serviceEntry : anomalies.entrySet()) {
+            String service = serviceEntry.getKey();
+            for (Map.Entry<String, List<Instant>> errorEntry : serviceEntry.getValue().entrySet()) {
+                String errorCode = errorEntry.getKey();
+                for (Instant minute : errorEntry.getValue()) {
+                    AggregationKey key = new AggregationKey(service, errorCode, minute);
+                    if (alreadyReported.add(key)) {
+                        fresh.computeIfAbsent(service, s -> new HashMap<>())
+                                .computeIfAbsent(errorCode, e -> new ArrayList<>())
+                                .add(minute);
+                    }
+                }
+            }
+        }
+        return fresh;
+    }
+
+    private void explainIncidents(Map<String, Map<String, List<Incident>>> incidents, Aggregator aggregator) {
         for (Map.Entry<String, Map<String, List<Incident>>> serviceEntry : incidents.entrySet()) {
             String service = serviceEntry.getKey();
 
@@ -97,12 +161,7 @@ public class LiveLogIngestionService {
                 String errorCode = errorEntry.getKey();
 
                 for (Incident incident : errorEntry.getValue()) {
-                    explainer.explainIncident(
-                            service,
-                            errorCode,
-                            incident,
-                            liveAggregator.getErrorLogs()
-                    );
+                    explainer.explainIncident(service, errorCode, incident, aggregator.getErrorLogs());
                 }
             }
         }
@@ -114,16 +173,12 @@ public class LiveLogIngestionService {
             String errorCode,
             Instant minuteBucket) {
 
-        if (!anomalies.containsKey(service)) {
-            return false;
-        }
-
         Map<String, List<Instant>> anomaliesByErrorCode = anomalies.get(service);
-        if (!anomaliesByErrorCode.containsKey(errorCode)) {
+        if (anomaliesByErrorCode == null) {
             return false;
         }
-
-        return anomaliesByErrorCode.get(errorCode).contains(minuteBucket);
+        List<Instant> minutes = anomaliesByErrorCode.get(errorCode);
+        return minutes != null && minutes.contains(minuteBucket);
     }
 
     private LiveIngestResponseDTO buildResponse(
@@ -142,12 +197,7 @@ public class LiveLogIngestionService {
                 List<IncidentResponseDTO> incidentResponses = new ArrayList<>();
 
                 for (Incident incident : errorEntry.getValue()) {
-                    incidentResponses.add(
-                            new IncidentResponseDTO(
-                                    incident.getStart(),
-                                    incident.getExplanation()
-                            )
-                    );
+                    incidentResponses.add(new IncidentResponseDTO(incident.getStart(), incident.getExplanation()));
                 }
 
                 errorMap.put(errorEntry.getKey(), incidentResponses);

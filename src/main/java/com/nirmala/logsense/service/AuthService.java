@@ -5,9 +5,11 @@ import com.nirmala.logsense.entity.Application;
 import com.nirmala.logsense.entity.ApplicationApiKey;
 import com.nirmala.logsense.entity.User;
 import com.nirmala.logsense.exception.AuthenticationException;
+import com.nirmala.logsense.exception.ConflictException;
 import com.nirmala.logsense.repository.AppUserRepository;
 import com.nirmala.logsense.repository.ApplicationApiKeyRepository;
 import com.nirmala.logsense.repository.ApplicationRepository;
+import com.nirmala.logsense.security.JwtTokenService;
 import com.nirmala.logsense.util.ApiKeyUtil;
 import jakarta.transaction.Transactional;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -20,20 +22,23 @@ public class AuthService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final ApplicationRepository applicationRepository;
     private final ApplicationApiKeyRepository apiKeyRepository;
+    private final JwtTokenService jwtTokenService;
 
     public AuthService(AppUserRepository appUserRepository,
                        BCryptPasswordEncoder passwordEncoder, ApplicationRepository applicationRepository,
-                       ApplicationApiKeyRepository apiKeyRepository) {
+                       ApplicationApiKeyRepository apiKeyRepository,
+                       JwtTokenService jwtTokenService) {
         this.appUserRepository = appUserRepository;
         this.passwordEncoder = passwordEncoder;
         this.applicationRepository = applicationRepository;
         this.apiKeyRepository = apiKeyRepository;
+        this.jwtTokenService = jwtTokenService;
     }
 
     @Transactional
     public RegisterResponseDTO register(RegisterRequestDTO request) {
         if (appUserRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already registered");
+            throw new ConflictException("Email already registered");
         }
 
         User user = new User();
@@ -73,15 +78,19 @@ public class AuthService {
 
     public LoginResponseDTO login(LoginRequestDTO request) {
         User user = appUserRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Invalid email or password"));
+                .orElseThrow(() -> new AuthenticationException("Invalid email or password"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new AuthenticationException("Invalid email or password");        }
+            throw new AuthenticationException("Invalid email or password");
+        }
 
         return new LoginResponseDTO(
                 user.getUserId(),
                 user.getName(),
                 user.getEmail(),
+                jwtTokenService.issueToken(user.getUserId()),
+                "Bearer",
+                jwtTokenService.getTtl().getSeconds(),
                 "Login successful"
         );
     }

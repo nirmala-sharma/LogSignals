@@ -7,6 +7,8 @@ import com.nirmala.logsense.service.ApiKeyService;
 import com.nirmala.logsense.service.LogAnalysisService;
 import com.nirmala.logsense.service.LiveLogIngestionService;
 import com.nirmala.logsense.service.LogPersistenceService;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/logs")
+@SecurityRequirement(name = "apiKeyAuth")
 public class LogAnalysisController {
 
     private final LogAnalysisService logService;
@@ -33,7 +36,7 @@ public class LogAnalysisController {
 
     @PostMapping(value = "/analyze", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public LogAnalysisResponseDTO analyzeLogs(
-            @RequestHeader("X-API-Key") String apiKey,
+            @Parameter(hidden = true) @RequestHeader(value = "X-API-Key", required = false) String apiKey,
             @RequestPart("file") MultipartFile file
     ) {
         Long applicationId = apiKeyService.getApplicationIdFromApiKey(apiKey);
@@ -42,7 +45,7 @@ public class LogAnalysisController {
 
     @PostMapping(value = "/ingest", consumes = MediaType.APPLICATION_JSON_VALUE)
     public LiveIngestResponseDTO ingestLog(
-            @RequestHeader("X-API-Key") String apiKey,
+            @Parameter(hidden = true) @RequestHeader(value = "X-API-Key", required = false) String apiKey,
             @Valid @RequestBody LiveIngestRequestDTO request
     ) {
         Long applicationId = apiKeyService.getApplicationIdFromApiKey(apiKey);

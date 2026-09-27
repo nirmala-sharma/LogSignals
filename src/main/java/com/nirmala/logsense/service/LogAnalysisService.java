@@ -7,6 +7,7 @@ import com.nirmala.logsense.detector.AnomalyDetector;
 import com.nirmala.logsense.dto.IncidentResponseDTO;
 import com.nirmala.logsense.dto.LogAnalysisResponseDTO;
 import com.nirmala.logsense.exception.EmptyLogFileException;
+import com.nirmala.logsense.exception.LogAnalysisException;
 import com.nirmala.logsense.explainer.IncidentExplainer;
 import com.nirmala.logsense.model.Incident;
 import com.nirmala.logsense.model.LogModel;
@@ -122,8 +123,8 @@ public class LogAnalysisService {
                 }
             }
 
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to read log file", e);
+        } catch (java.io.IOException e) {
+            throw new LogAnalysisException("Failed to read log file", e);
         }
 
         aggregator.setTotalLines(totalLines);

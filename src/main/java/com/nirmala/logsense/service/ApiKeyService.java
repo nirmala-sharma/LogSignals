@@ -1,6 +1,7 @@
 package com.nirmala.logsense.service;
 
 import com.nirmala.logsense.entity.ApplicationApiKey;
+import com.nirmala.logsense.exception.AuthenticationException;
 import com.nirmala.logsense.repository.ApplicationApiKeyRepository;
 import com.nirmala.logsense.util.ApiKeyUtil;
 import org.springframework.stereotype.Service;
@@ -16,14 +17,14 @@ public class ApiKeyService {
 
     public Long getApplicationIdFromApiKey(String rawApiKey) {
         if (rawApiKey == null || rawApiKey.isBlank()) {
-            throw new RuntimeException("Missing API key");
+            throw new AuthenticationException("Missing API key. Send it in the X-API-Key header");
         }
 
         String keyHash = ApiKeyUtil.hashApiKey(rawApiKey);
 
         ApplicationApiKey apiKey = apiKeyRepository
                 .findByKeyHashAndRevokedAtIsNull(keyHash)
-                .orElseThrow(() -> new RuntimeException("Invalid API key"));
+                .orElseThrow(() -> new AuthenticationException("Invalid or revoked API key"));
 
         return apiKey.getApplicationId();
     }

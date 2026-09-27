@@ -19,16 +19,19 @@ This project demonstrates practical backend engineering concepts including authe
 
 ## Features
 
-- User registration and login
-- Automatic application creation during registration
-- API key generation and hashed API key storage
-- Secure API key based ingestion for client applications
-- File-based log analysis
-- Live log ingestion
-- Anomaly detection grouped by service and error code
+- User registration and login with **JWT** access tokens (HS256)
+- Automatic application creation during registration, plus additional applications per user
+- API key generation with **SHA-256 hashed** storage (raw key shown only once)
+- API key based ingestion for client applications
+- **Multi-tenant isolation**: every application's logs, anomalies and live detection state are kept separate
+- File-based log analysis and live (one event at a time) log ingestion
+- **Rolling statistical anomaly detection** (mean + k·σ) per service and error code
+- **Incident correlation**: consecutive anomalous minutes are grouped into a single incident
+- **Severity classification** (MEDIUM / HIGH / CRITICAL) with a human-readable explanation
+- **Deduplicated email alerts**: each anomaly is stored and emailed once
+- Bounded memory for live ingestion (configurable retention window)
+- Consistent JSON error responses with correct HTTP status codes (400 / 401 / 404 / 409 / 413)
 - PostgreSQL-backed persistence for users, applications, API keys, analysis runs, logs, and anomalies
-- Email alerting for detected anomalies
-- Historical tracking of analysis runs and anomaly records
 
 ---
 
@@ -41,7 +44,9 @@ This project demonstrates practical backend engineering concepts including authe
 - Maven
 - REST APIs
 - Swagger / OpenAPI
-- JUnit
+- JWT (HS256, implemented with JDK HMAC-SHA256)
+- BCrypt (password hashing)
+- JUnit 5 & Mockito
 - Lombok
 - JavaMailSender
 
@@ -52,14 +57,28 @@ This project demonstrates practical backend engineering concepts including authe
 
 ```mermaid
 flowchart LR
-    U[User] --> R[Register / Login]
-    U --> C[Owns Client Application]
-    R --> K[Generate API Key]
-    C -->|Uses API Key| L[Send Logs]
-    L --> A[Analyze Logs]
-    A --> D[PostgreSQL]
-    A --> E[Email Alert]
+    U[User] -->|email + password| R[Register / Login]
+    R -->|JWT| M[Manage Applications]
+    R --> K[API Key per Application]
+    C[Client Application] -->|X-API-Key| L[Send Logs]
+    L --> P[Detection Pipeline]
+    P --> D[(PostgreSQL)]
+    P --> E[Email Alert]
 ```
+
+### Log Processing Pipeline
+
+```mermaid
+flowchart LR
+    A[Parse<br/>JSON log line] --> B[Aggregate<br/>per service, error code, minute]
+    B --> C[Detect<br/>rolling mean + k·σ]
+    C --> D[Correlate<br/>group consecutive minutes]
+    D --> E[Explain<br/>severity + message]
+    E --> F[Persist<br/>PostgreSQL]
+    F --> G[Alert<br/>email, once per anomaly]
+```
+
+Each stage is a separate Spring component (`LogParser`, `Aggregator`, `AnomalyDetector`, `IncidentCorrelator`, `IncidentExplainer`, `LogPersistenceService`, `AlertNotificationService`), orchestrated by `LogAnalysisService` (file uploads) and `LiveLogIngestionService` (live events).
 ---
 
 ##  Registration Flow
@@ -169,27 +188,60 @@ A dynamic threshold is calculated using the recent mean and standard deviation:
 
 `threshold = mean + (k × standard deviation)`
 
-In the current implementation:
-- `k = 2`
-- minimum standard deviation = `1`
+In the current implementation (configurable in `application.properties`):
+- `k = 2` (`logsense.detection.threshold`)
+- rolling window = last `5` minutes with errors (`logsense.detection.windowSize`)
+- minimum earlier minutes before detection starts = `1` (`logsense.detection.minimumSamples`)
+- minimum standard deviation = `1` (`logsense.detection.minimumStandardDeviation`), so a perfectly flat baseline does not make every small increase an anomaly
 
-This means the system does not treat every repeated error as anomalous. Instead, it checks whether the current error spike is significantly higher than the recent normal pattern.
+A minute is anomalous when `current count >= threshold`. Only `ERROR` level logs are counted.
 
-For example, if a service had 2 repeated errors in an earlier minute and later shows 4 repeated errors, the later minute may be flagged as anomalous if it crosses the calculated rolling threshold.
+**Example:** a service had 2 errors in an earlier minute. The standard deviation is 0, so the minimum of 1 is used: `threshold = 2 + 2 × 1 = 4`. If the next minute has 4 errors, it is flagged as anomalous.
+
+### From anomalies to alerts
+
+1. **Correlate**: consecutive anomalous minutes for the same service and error code are merged into one incident (e.g. 10:03, 10:04, 10:05 → one incident).
+2. **Classify severity** from the total error count of the incident:
+
+   | Errors | Severity |
+      |---|---|
+   | ≥ 5 | CRITICAL |
+   | 3 – 4 | HIGH |
+   | < 3 | MEDIUM |
+
+3. **Explain**: e.g. `CRITICAL: PaymentService had 5 PAYMENT_FAILED errors at 2026-02-04T10:07:00Z.`
+4. **Persist and alert**: anomalies are saved and the application owner receives an email. In live ingestion, each anomaly is alerted only once.
 
 ---
 
 ## API Endpoints
-1.Authentication
-- POST /auth/register
-- POST /auth/login
-  
-2.Logs
-- POST /logs/analyze
-- POST /logs/ingest
+1. Authentication
+- `POST /auth/register` – creates the user, a default application and its API key
+- `POST /auth/login` – returns a signed JWT access token (HS256, 60 min)
+
+2. Applications (requires `Authorization: Bearer <accessToken>`)
+- `POST /applications` – creates another application + API key for the logged-in user
+
+3. Logs (requires `X-API-Key: <apiKey>`)
+- `POST /api/logs/analyze` – upload a log file (multipart, field `file`)
+- `POST /api/logs/ingest` – send a single log event (JSON)
+
+### Error responses
+| Status | When |
+|---|---|
+| 400 | validation failed, invalid JSON, missing file |
+| 401 | wrong email/password, missing/invalid/revoked API key, missing/invalid/expired token |
+| 404 | referenced user or application does not exist |
+| 409 | email already registered, application name already used |
+| 413 | uploaded file too large |
+
+### Live ingestion behaviour
+- Each application has its own isolated in-memory detection state (no cross-tenant mixing).
+- Only the last `logsense.live.retentionMinutes` (default 60) of minute buckets are kept in memory.
+- Each anomaly (service + error code + minute) is stored and emailed **once**, not on every subsequent log.
 
 ## Sample Requests
-# Register
+### Register
 ```json
 {
   "name": "Nirmala",
@@ -199,7 +251,22 @@ For example, if a service had 2 repeated errors in an earlier minute and later s
   "applicationDescription": "Logs from payment service"
 }
 ```
-# Live Log Ingestion
+### Login
+```json
+{ "email": "nirmala@example.com", "password": "password123" }
+```
+Response contains `accessToken`, `tokenType` (`Bearer`) and `expiresInSeconds`.
+
+### Create another application
+Header:
+```text
+Authorization: Bearer <accessToken>
+```
+Body:
+```json
+{ "name": "Checkout Service", "description": "Checkout logs", "apiKeyName": "prod" }
+```
+### Live Log Ingestion
 Header:
 ```text
 X-API-Key: <your-api-key>
@@ -217,29 +284,36 @@ Body:
 ## Project Structure
 ```text
 src/main/java/com/nirmala/logsense
-├── config
-├── controller
-├── dto
-├── entity
-├── model
-├── repository
-├── service
-└── util
+├── aggregator   # groups error logs per service, error code and minute
+├── config       # detection settings, password encoder, JWT and Swagger config
+├── controller   # REST endpoints (auth, applications, logs)
+├── correlator   # merges consecutive anomalous minutes into incidents
+├── detector     # rolling mean + k·σ anomaly detection
+├── dto          # request / response objects
+├── entity       # JPA entities mapped to PostgreSQL tables
+├── exception    # custom exceptions and global error handler
+├── explainer    # severity classification and incident explanations
+├── model        # internal domain objects (LogModel, AggregationKey, Incident)
+├── parser       # parses JSON log lines
+├── repository   # Spring Data JPA repositories
+├── security     # JWT token issuing and verification
+├── service      # orchestration, persistence, auth, alerting
+└── util         # API key generation and hashing
 ```
 ---
 
-# How to Run
+## How to Run
 
-## Requirements
+### Requirements
 - Java 25
 - Maven
 - PostgreSQL
 
-## Optional Tools
+### Optional Tools
 - IntelliJ IDEA (or any IDE)
 - pgAdmin / psql (for database management)
 
-# Steps
+### Steps
 1. Clone the repository
 ``` bash
 git clone https://github.com/nirmala-sharma/LogSignals.git
@@ -271,27 +345,26 @@ database/schema.sql
  spring.mail.properties.mail.smtp.auth=true
  spring.mail.properties.mail.smtp.starttls.enable=true
 ```
-5. Set IntelliJ environment variables for the mail
+5. Set IntelliJ environment variables for mail and token signing
 ``` text
-MAIL_USERNAME=your_email@gmail.com;MAIL_PASSWORD=your_google_app_password
+MAIL_USERNAME=your_email@gmail.com;MAIL_PASSWORD=your_google_app_password;JWT_SECRET=<random string, at least 32 characters>
 ```
+Generate a secret with `openssl rand -base64 32`. If `JWT_SECRET` is not set, a random secret is generated at startup and issued tokens stop working after a restart.
 6. Run the Spring Boot application
    For that first select the main app which is LogSenseApplication and then hit Run button.
 
 ## How to test
-1. Register user
+Open Swagger UI at `http://localhost:8080/swagger-ui/index.html`.
 
-2. Copy returned API key
+1. `POST /auth/register` → copy the returned `apiKey`
+2. `POST /auth/login` → copy the returned `accessToken`
+3. Click **Authorize** and paste the token into `bearerAuth` and the API key into `apiKeyAuth`
+4. `POST /applications` → create another application
+5. `POST /api/logs/analyze` → upload `demo_testing_data/testingfile.log`
+6. `POST /api/logs/ingest` → send error logs over several minutes to trigger an anomaly
+7. Check PostgreSQL tables and your email inbox
 
-3. Login user
-
-4. Test /logs/ingest
-
-5. Test /logs/analyze
-
-6. Check PostgreSQL tables
-
-7. Check email inbox
+Run the unit tests with `mvn test`.
 
 ---
 ## Demo Screenshots
@@ -300,20 +373,32 @@ MAIL_USERNAME=your_email@gmail.com;MAIL_PASSWORD=your_google_app_password
 
 ![Swagger UI](docs/images/swagger_ui.png)
 
-
 ### Register API Response
 
 ![Register Response](docs/images/register_api.png)
-
 
 ### Live Log Ingestion Response
 
 ![Live Ingestion Response](docs/images/live_ingest_response.png)
 
-
 ### Email Alert
 ![Email Alert](docs/images/email_alert.png)
 
+---
+
+## Known Limitations
+
+Being explicit about what this project does **not** handle yet:
+
+- **In-memory live state**: live detection history is kept in memory, so it is lost on restart and not shared across multiple instances (a production version would use Redis).
+- **Cold start**: an error code seen for the first time has no baseline, so even a large first spike is not flagged.
+- **Sparse baseline**: minutes with zero errors are skipped instead of counted as 0, which can skew the baseline.
+- **Synchronous alerts**: emails are sent within the request; a slow mail server slows ingestion.
+- **No rate limiting** per API key.
+- **API key management**: no endpoints yet to list, rotate or revoke keys, and no token refresh.
+- **Data protection**: no automatic masking of sensitive data in logs, no retention policy, and HTTPS must be provided by the deployment.
+
+---
 
 ## Learning Opportunities
 
@@ -348,23 +433,18 @@ Contributions are welcome in both beginner-friendly and advanced areas.
 ### Intermediate
 
 - add history retrieval APIs for logs and anomalies
+- add endpoints to list, rotate and revoke API keys
 - improve severity classification logic
 - add better filtering and search support
 - enhance email alert formatting
-- add alert throttling to avoid duplicate notifications
 
 ### Advanced
 
-- add JWT-based authentication
 - support multiple alert recipients per application
 - make anomaly thresholds configurable per service
 - add a dashboard or frontend UI
 - containerize the project using Docker
 - add role-based access control
 - integrate asynchronous alert processing
-
-
-   
-
-  
-
+- event-driven ingestion with Kafka and Redis-backed detection state
+- integration tests with Testcontainers and a CI pipeline

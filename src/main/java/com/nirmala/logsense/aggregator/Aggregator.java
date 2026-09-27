@@ -74,6 +74,16 @@ public class Aggregator {
         }
         return totalErrorsPerMinute;
     }
+    /**
+     * Drops every minute bucket strictly older than {@code cutoff}.
+     * Used by live ingestion so a long-running stream keeps a bounded window
+     * in memory instead of growing forever.
+     */
+    public void evictOlderThan(Instant cutoff) {
+        errorCount.keySet().removeIf(key -> key.getMinuteBucket().isBefore(cutoff));
+        errorLogs.keySet().removeIf(key -> key.getMinuteBucket().isBefore(cutoff));
+    }
+
     public int getTotalLines() { return totalLines; }
     public int getInvalidLines() { return invalidLines; }
     public void setTotalLines(int totalLines) { this.totalLines = totalLines; }

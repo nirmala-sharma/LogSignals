@@ -2,6 +2,7 @@ package com.nirmala.logsense.service;
 
 import com.nirmala.logsense.entity.User;
 import com.nirmala.logsense.entity.Application;
+import com.nirmala.logsense.exception.ResourceNotFoundException;
 import com.nirmala.logsense.repository.AppUserRepository;
 import com.nirmala.logsense.repository.ApplicationRepository;
 import org.springframework.stereotype.Service;
@@ -36,10 +37,10 @@ public class AlertNotificationService {
         }
 
         Application application = applicationRepository.findById(applicationId)
-                .orElseThrow(() -> new RuntimeException("Application not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
 
         User owner = appUserRepository.findById(application.getOwnerUserId())
-                .orElseThrow(() -> new RuntimeException("Application owner not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Application owner not found"));
 
         for (Map.Entry<String, Map<String, List<Instant>>> serviceEntry : anomalies.entrySet()) {
             String serviceName = serviceEntry.getKey();
