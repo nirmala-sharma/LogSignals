@@ -4,7 +4,7 @@ import com.nirmala.logsense.aggregator.Aggregator;
 import com.nirmala.logsense.config.AnomalyDetectionConfig;
 import com.nirmala.logsense.correlator.IncidentCorrelator;
 import com.nirmala.logsense.detector.AnomalyDetector;
-import com.nirmala.logsense.dto.LogAnalysisResponseDTO;
+import com.nirmala.logsense.exception.EmptyLogFileException;
 import com.nirmala.logsense.explainer.IncidentExplainer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,8 +13,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationContext;
 import org.springframework.mock.web.MockMultipartFile;
-
-import java.util.HashMap;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -29,7 +27,7 @@ class LogAnalysisServiceTest {
     @Mock private AnomalyDetectionConfig config;
     @Mock private Aggregator aggregator;
     @Mock private  LogPersistenceService logPersistenceService;
-    @Mock private LogAnalysisService service;
+    private LogAnalysisService service;
     @Mock private AlertNotificationService alertNotificationService;
 
     @BeforeEach
@@ -41,43 +39,18 @@ class LogAnalysisServiceTest {
     }
 
     @Test
-    void shouldReturnFailedResponseWhenFileIsEmpty() {
-        // Arrange — empty file
+    void shouldRejectEmptyFile() {
         MockMultipartFile emptyFile = new MockMultipartFile(
                 "file", "test.log", "text/plain", new byte[0]
         );
 
-        // Act
-        LogAnalysisResponseDTO result = service.runAnalysis(1L,emptyFile);
-
-        // Assert
-        assertEquals("failed", result.getStatus());
-        assertEquals("Uploaded log file is empty", result.getMessage());
+        EmptyLogFileException ex = assertThrows(EmptyLogFileException.class,
+                () -> service.runAnalysis(1L, emptyFile));
+        assertEquals("Uploaded log file is empty", ex.getMessage());
     }
 
     @Test
-    void shouldReturnFailedResponseWhenFileIsNull() {
-        // Act
-        LogAnalysisResponseDTO result = service.runAnalysis(1L,null);
-
-        // Assert
-        assertEquals("failed", result.getStatus());
+    void shouldRejectNullFile() {
+        assertThrows(EmptyLogFileException.class, () -> service.runAnalysis(1L, null));
     }
-
-//    @Test
-//    void shouldReturnSuccessResponseForValidFile() throws Exception {
-//        when(context.getBean(Aggregator.class)).thenReturn(aggregator);
-//        when(detector.detect(any(), any())).thenReturn(new HashMap<>());
-//        when(correlator.group(any())).thenReturn(new HashMap<>());
-//
-//        String logContent = "your correct log format here";
-//        MockMultipartFile validFile = new MockMultipartFile(
-//                "file", "test.log", "text/plain", logContent.getBytes()
-//        );
-//
-//        LogAnalysisResponseDTO result = service.runAnalysis(validFile);
-//
-//        assertEquals("success", result.getStatus());
-//        assertEquals("Analysis completed successfully", result.getMessage());
-//    }
 }
