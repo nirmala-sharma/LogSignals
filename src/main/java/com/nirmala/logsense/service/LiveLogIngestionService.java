@@ -72,10 +72,15 @@ public class LiveLogIngestionService {
         this.retentionMinutes = retentionMinutes;
     }
 
+    /** Used by POST /api/logs/ingest: converts the JSON request and runs the pipeline. */
     public LiveIngestResponseDTO ingest(Long applicationId, LiveIngestRequestDTO request) {
+        return ingest(applicationId, request.toLogModel());
+    }
+
+    /** Runs one already-parsed log through the live pipeline. Also used by the stream endpoint. */
+    public LiveIngestResponseDTO ingest(Long applicationId, LogModel logModel) {
         AppLiveState state = stateByApplication.computeIfAbsent(applicationId, id -> new AppLiveState());
 
-        LogModel logModel = request.toLogModel();
         Instant minuteBucket = logModel.getTimestamp().truncatedTo(ChronoUnit.MINUTES);
 
         LiveIngestResponseDTO response;
