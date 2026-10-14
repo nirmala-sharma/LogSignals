@@ -25,6 +25,7 @@ This project demonstrates practical backend engineering concepts including authe
 - API key based ingestion for client applications
 - **Multi-tenant isolation**: every application's logs, anomalies and live detection state are kept separate
 - File-based log analysis and live (one event at a time) log ingestion
+- **Streaming ingestion**: keep one HTTP connection open and send logs continuously (NDJSON); each line is processed the moment it arrives
 - **Rolling statistical anomaly detection** (mean + k·σ) per service and error code
 - **Incident correlation**: consecutive anomalous minutes are grouped into a single incident
 - **Severity classification** (MEDIUM / HIGH / CRITICAL) with a human-readable explanation
@@ -78,7 +79,8 @@ flowchart LR
     F --> G[Alert<br/>email, once per anomaly]
 ```
 
-Each stage is a separate Spring component (`LogParser`, `Aggregator`, `AnomalyDetector`, `IncidentCorrelator`, `IncidentExplainer`, `LogPersistenceService`, `AlertNotificationService`), orchestrated by `LogAnalysisService` (file uploads) and `LiveLogIngestionService` (live events).
+Each stage is a separate Spring component (`LogParser`, `Aggregator`, `AnomalyDetector`, `IncidentCorrelator`, `IncidentExplainer`, `LogPersistenceService`, `AlertNotificationService`), orchestrated by `LogAnalysisService` (file uploads), `LiveLogIngestionService` (live events) and `LogStreamIngestionService` (streams, which feed each line into the live pipeline).
+
 ---
 
 ##  Registration Flow
@@ -225,6 +227,7 @@ A minute is anomalous when `current count >= threshold`. Only `ERROR` level logs
 3. Logs (requires `X-API-Key: <apiKey>`)
 - `POST /api/logs/analyze` – upload a log file (multipart, field `file`)
 - `POST /api/logs/ingest` – send a single log event (JSON)
+- `POST /api/logs/stream` – stream logs over one open connection, one JSON log per line (NDJSON)
 
 ### Error responses
 | Status | When |
@@ -281,6 +284,39 @@ Body:
   "message": "Payment failed"
 }
 ```
+### Streaming Ingestion
+Instead of one HTTP request per log, a client can keep **one connection open** and send logs continuously, one JSON object per line ([NDJSON](https://github.com/ndjson/ndjson-spec)). The server reads each line as it arrives and runs it through the same live detection pipeline, so anomalies are detected and alerted **while the stream is still open**. Invalid lines are counted and skipped, and the stream continues.
+
+Headers:
+```text
+X-API-Key: <your-api-key>
+Content-Type: application/x-ndjson
+```
+Body (one log per line, sent over time):
+```text
+{"timestamp":"2026-02-04T10:00:10Z","level":"ERROR","service":"PaymentService","errorCode":"PAYMENT_FAILED","message":"Payment failed"}
+{"timestamp":"2026-02-04T10:01:05Z","level":"ERROR","service":"PaymentService","errorCode":"PAYMENT_FAILED","message":"Payment failed"}
+```
+When the client ends the stream, it receives a summary:
+```json
+{
+  "status": "success",
+  "message": "Stream processed",
+  "totalLines": 6,
+  "ingestedLines": 5,
+  "invalidLines": 1,
+  "anomalousLines": 2
+}
+```
+
+**Try it live:** run this, then paste log lines one at a time and watch the application console process each one immediately. Press `Ctrl+D` to end the stream.
+```bash
+curl -X POST -T - \
+  -H "X-API-Key: <your-api-key>" \
+  -H "Content-Type: application/x-ndjson" \
+  http://localhost:8080/api/logs/stream
+```
+
 ## Project Structure
 ```text
 src/main/java/com/nirmala/logsense
@@ -362,7 +398,8 @@ Open Swagger UI at `http://localhost:8080/swagger-ui/index.html`.
 4. `POST /applications` → create another application
 5. `POST /api/logs/analyze` → upload `demo_testing_data/testingfile.log`
 6. `POST /api/logs/ingest` → send error logs over several minutes to trigger an anomaly
-7. Check PostgreSQL tables and your email inbox
+7. Stream logs with the `curl` command from [Streaming Ingestion](#streaming-ingestion) and watch anomalies appear in the console while the stream is open
+8. Check PostgreSQL tables and your email inbox
 
 Run the unit tests with `mvn test`.
 
@@ -395,6 +432,8 @@ Being explicit about what this project does **not** handle yet:
 - **Sparse baseline**: minutes with zero errors are skipped instead of counted as 0, which can skew the baseline.
 - **Synchronous alerts**: emails are sent within the request; a slow mail server slows ingestion.
 - **No rate limiting** per API key.
+- **Streaming uses one thread per open connection**: fine for a moderate number of clients; for thousands of long-lived streams, virtual threads or non-blocking I/O (WebFlux) would be needed.
+- **Stream summary only at the end**: anomalies are detected and alerted during the stream, but the client receives the summary only when it closes the connection.
 - **API key management**: no endpoints yet to list, rotate or revoke keys, and no token refresh.
 - **Data protection**: no automatic masking of sensitive data in logs, no retention policy, and HTTPS must be provided by the deployment.
 
